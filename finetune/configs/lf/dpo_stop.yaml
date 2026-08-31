@@ -17,7 +17,7 @@ dataset_dir: /wekafs/ict/hx_624/llm-ft/data/lf
 dataset: stop_dpo_pairs
 template: qwen3_5
 enable_thinking: false
-cutoff_len: 4096
+cutoff_len: 2048
 preprocessing_num_workers: 16
 dataloader_num_workers: 2
 output_dir: /wekafs/ict/hx_624/llm-ft/runs/lf_qwen35_9b_stopdpo

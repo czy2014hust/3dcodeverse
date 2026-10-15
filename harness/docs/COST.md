@@ -15,10 +15,13 @@ Reproduce:
 3dcode cost prices [--unverified]                          # the price table + provenance
 ```
 
-The audit is `codeverse3d/addons/costreport/audit.py`; it reconstructs a per-call ledger from
-old runs (`codeverse3d/cost/reconstruct.py`), so it works on every run recorded so
-far — no re-instrumentation needed.  `eval/bench/out/compare_v1_full` (a partial,
-superseded compare battery) is excluded.
+The audit is `codeverse3d/addons/costreport/audit.py`.  Part I was measured with a
+reconstruction of per-call rows from those runs' trajectories, verdicts and events
+(`cost/reconstruct.py`); every run since 2026-08-23 writes its own ledger, the reconstruction
+went on 2026-09-22 (434 of 467 archived runs carry a ledger; the 33 without are five v1
+batteries outside the repo), and `3dcode cost` now reads the ledger alone — so Part I's
+figures are the audit's record, not something this tree re-derives.
+`eval/bench/out/compare_v1_full` (a partial, superseded compare battery) is excluded.
 
 > **Re-run 2026-08-23 (wave 3).**  Every figure in Part I below was recomputed
 > after a de-duplication bug in the reconstruction was fixed (§6): a retried agent
@@ -198,9 +201,9 @@ model — **88% of the clock is waiting for a model**, 12% is the harness
 > the in-run best with the judgement stops: a run is now the baseline + `--rounds` refine
 > rounds, each built on the round before it, every round is kept, and which one to hand
 > over is picked after the run (`addons/select`).  A round that scored lower is a candidate
-> for that pick, not waste, so `3dcode cost` no longer reports those kinds (nor the
-> `cost.round` `regression` / `zero_delta` flags).  "Repair loop that never converged" is
-> now repair money spent in a round that still did not build; post-budget stays.
+> for that pick, not waste, so `3dcode cost` no longer reports those kinds (and the
+> `cost.round` event that carried their flags went too, §32).  "Repair loop that never
+> converged" is now repair money spent in a round that still did not build; post-budget stays.
 
 Concrete examples:
 
@@ -271,12 +274,12 @@ above are what `audit_runs()` prints today, and the script that prints them is i
 the scratchpad; anyone who can reproduce 25/$4.37 should say which run set it used.
 
 **Both holes are now closed at the source, so this section is about history:**
-the live ledger (§12) writes one row per call at the time of the call, the
-`BudgetGuard` charges the planner, aborted rounds, retried sessions and the
-texture pass through the same door, and a post-hoc pass joins the run's ledger
-(`3dcode texture pass` opens it with `create=False`).  A run recorded from now on
-cannot have an off-record dollar; the reconstruction path exists for the 61 runs
-recorded before it.
+the live ledger (§12) writes one row per call at the time of the call — the planner,
+aborted rounds, retried sessions and the texture pass included — and a post-hoc pass joins
+the run's ledger (`3dcode texture pass` opens it with `create=False`); since 2026-09-22 the
+record's total IS that ledger's sum (§32).  A run recorded from now on
+cannot have an off-record dollar; the reconstruction that audited the 61 runs recorded
+before it went on 2026-09-22, and with it `tests/cost/test_reconstruct.py`.
 
 ## 7. Price hygiene (checked 2026-08-23)
 
@@ -336,9 +339,10 @@ residency (1.1x) and fast-mode multipliers, per-search server-tool fees.
 | role | model | $/call | measured quality | when |
 |---|---|---|---|---|
 | planner | `gemini:gemini-3.7-flash` ★ | $0.013 | no failure attributable to the planner | always — the plan is 0.8% of a run |
-| generator | `gemini-cli:gemini-3.7-flash` ★ | $0.73 | 0.827 on compare_v1 | default for every track with tools since 2026-08-28 |
+| generator | `agy:gemini-4-argon` ★ | not yet measured | — | default for every track with tools since 2026-10-13 (D103: gemini-cli removed; agy in Gemini-API mode, pool key + MCP, priced at list) |
+| generator | `gemini-cli:gemini-3.7-flash` (removed in D103) | $0.73 | 0.827 on compare_v1 | the default 2026-08-28 – 2026-10-13; the expectation the agy arm is held to until a battery re-measures it |
 | generator | `single-shot:gemini:gemini-3.7-flash` | $0.05 | graphics: 5/6 passed, median 0.810 | glsl / opengl — one file, compiler feedback |
-| generator | `gemini-cli:gemini-3.6-flash` | $0.52 | compare_v1 mean 0.835 (best arm measured) | the cheaper arm, and the one every recorded battery was run on |
+| generator | `gemini-cli:gemini-3.6-flash` (removed in D103; `agy:gemini-3.6-flash` is its successor) | $0.52 | compare_v1 mean 0.835 (best arm measured) | the cheaper arm, and the one every recorded battery was run on |
 | generator | `codex:gpt-5.6-sol` | $1.93 in-loop / $0.20 one-shot | one-shot 0.786 | strong one-shot baseline, expensive loop |
 | generator | `oneshot:claude-code` | $1.04 | 0.673, 0/2 passed | not for bulk generation |
 | judge | `gemini:gemini-3.1-pro-preview` ★ | $0.060 | σ 0.030, pearson(gate errors, score) **+0.63** | every decision that persists |
@@ -383,13 +387,14 @@ the model, is what makes the artifact), and cheaper judges (§8).
 ## 10. The cost ledger (`codeverse3d/cost/`)
 
 ```python
-from codeverse3d.cost import record_call, load_ledger, summarise
+from codeverse3d.cost import record_call, load_ledger
+from codeverse3d.cost.ledger import summarise
 
-with run_ledger(ws.root):                       # <run>/telemetry/cost.jsonl (cost_ledger.jsonl = symlink alias)
+with run_ledger(ws.root):                       # <run>/telemetry/cost.jsonl
     record_call(res.usage, run=ws.slug, round=idx, stage="refine", role="generator",
                 label=job.label, outcome=res.exit_reason)     # one append-only JSONL row
 
-rows = load_ledger(ws.root)                     # telemetry/cost.jsonl, else the pre-2026-08-23 root file
+rows = load_ledger(ws.root)                     # telemetry/cost.jsonl
 summarise(rows).dimension("stage")["judge"].cost_usd
 ```
 
@@ -399,11 +404,6 @@ prices actually used, price_source + price_approximate + price_checked
 (provenance), cost_usd, recorded_usd, latency_ms, cache_hit, outcome, n_calls,
 source`.  Writing never raises and never blocks a run; unknown models are
 recorded at $0 **and flagged**, never silently dropped.
-
-Until the call sites are wired, `codeverse3d.cost.reconstruct` rebuilds the same
-rows from `record.json` + `events.jsonl` + `trajectories/**` — that is what this
-audit runs on, and it reconciles to `record.total_usage` on every run (or says
-why it does not, §6).
 
 One helper exists for the callers:
 
@@ -447,8 +447,8 @@ out not to pay.
   captioner, texturing and single-shot generation.
 * **`MeteredAgent`** wraps everything `agents.get_coding_agent` hands out: it sets
   the ambient round/stage for the session (so the rows above land in the right
-  bucket) and, for a backend whose calls we cannot see (gemini-cli / claude-code / codex /
-  agy), records one session row from `AgentResult.usage`.
+  bucket) and, for a backend whose calls we cannot see (claude-code / codex / agy; gemini-cli
+  until D103), records one session row from `AgentResult.usage`.
 
   **Which backends those are is a property of the backend, not a guess.**  The
   first version asked "did anybody write a ledger row while this session ran?"
@@ -474,10 +474,9 @@ assemble, rebuild → repair, asset / asset_fix → assets); before 2026-08-29 t
 landed in `other`.  Candidate generation sessions carry `stage=candidate` with labels
 `baseline_c<k>`; candidate judge money is booked `stage=judge`, and the pairwise tie-break
 `stage=pairwise` (its ledger row carries `role=judge`, label `pairwise:…`).  Role, label and
-round live on the `CallCost` row, never on the guard — `BudgetGuard.charge/add` take
-`(usage, *, stage, enforce)` only since 2026-08-30 (D45).  `audit.lost_candidate` counts
-generator sessions only and reads both label forms — `baseline_c<k>` (live) and
-`c<k>:baseline` (reconstructed).
+round live on the `CallCost` row — and since 2026-09-22 the guard keeps no money at all (§32).
+`audit.lost_candidate` counts
+generator sessions only, by their `baseline_c<k>` label.
 
 **Who opens a ledger.**  `3dcode make` / `3dcode resume` (`cli.main._run_track`),
 `3dcode texture pass` (with `create=False`), **and the bench drivers** —
@@ -497,25 +496,22 @@ token counts, the three **unit prices actually used** plus their provenance
 `cache_hit`, outcome and `n_calls`.  Writing never raises and never blocks: a
 pricing failure logs and keeps the recorded dollar.
 
-**Where it lands.**  `<run>/telemetry/cost.jsonl` (the run-layout telemetry
-bucket), with `<run>/cost_ledger.jsonl` left as a relative symlink so
-`record.telemetry.live_ledger_path` and the `telemetry/usage.jsonl` alias keep
-working — one physical copy.  A call made with no run context (a `3dcode judge`
+**Where it lands.**  `<run>/telemetry/cost.jsonl` (the run-layout telemetry bucket) — its
+one name since 2026-09-22: the root `cost_ledger.jsonl` and `telemetry/usage.jsonl` aliases
+are no longer written or read.  A call made with no run context (a `3dcode judge`
 outside a run, a bench script, a notebook) goes to a per-process log under
-`<cache_dir>/cost/`; `C3D_COST_LEDGER=off` disables writing entirely.
+`<cache_dir>/cost/`.  There is no off switch: the ledger is the only record of money (§32).
 
-**No double counting.**  `BudgetGuard` only buckets and enforces; `MeteredAgent` /
-`MeteredChatModel` are the one writer of `telemetry/cost.jsonl`, and `BaseTrack.run`
-opens the run ledger itself.  The guard's own aggregate writer and its
-`per_call_metering()` sentinel were deleted 2026-08-29: every production entry point
-(`3dcode make`, the bench drivers) opened `run_ledger` first, so it never wrote there —
-and with `C3D_COST_LEDGER=off` it wrote anyway, which is now really off.
+**No double counting.**  `MeteredAgent` / `MeteredChatModel` (and the image model's own row)
+are the one writer of `telemetry/cost.jsonl`, and `BaseTrack.run` opens the run ledger itself.
+The guard's own aggregate writer and its `per_call_metering()` sentinel were deleted
+2026-08-29, and its money on 2026-09-22 (§32).
 
-**Reading it.**  `cost.reconstruct.reconstruct_run` prefers a live ledger and
-falls back to rebuilding from trajectories / verdicts / events, so
-`3dcode cost` and the run layout's `telemetry/cost.json`
-both pick the live rows up automatically and the 61 recorded runs keep auditing
-(`RunLedger.source` says `live` or `reconstructed`).
+**Reading it.**  `3dcode cost` (`addons/costreport/audit.read_run` / `read_cell`) and the run
+layout's `telemetry/cost.json` read `telemetry/cost.jsonl` and nothing else; a run without one
+has no rows.  A run in a battery is named by its place under the audited path (`RunId`), so an
+A/B battery's control and variant cells of one prompt stay two runs (they shared one label
+while the name was the cell's last two path segments).
 
 ### Verified on two fresh live runs
 
@@ -675,7 +671,7 @@ given**, so `3dcode resume` reproduces it.
 
 | | economy | balanced | quality |
 |---|---|---|---|
-| generator | `single-shot:gemini:gemini-3.7-flash` | `gemini-cli:gemini-3.7-flash` | `gemini-cli:gemini-3.7-flash` |
+| generator | `single-shot:gemini:gemini-3.7-flash` | `agy:gemini-4-argon` | `agy:gemini-4-argon` |
 | judge | flash, n=2 | **pro, n=1** | **pro, n=3** |
 | refine rounds | 2 | 4 | 4 |
 | best-of-N | 1 | 1 | 2 |
@@ -684,6 +680,9 @@ given**, so `3dcode resume` reproduces it.
 | texture pass | off | off | on |
 | ceilings | $1.50 / 30 min | $5 / 60 min | $8 / 90 min |
 | expected from the audit | ~$0.30/run | ~$1.47/run | ~$3.20/run |
+
+(balanced / quality expectations were measured on gemini-cli; the generator moved to agy on
+2026-10-13, D103, and they have not been re-measured on it.)
 
 Why these numbers: r01 buys a score point for $4.93 and r02 for $6.80 while r03
 costs $33.49 (§5), so economy stops at 2; the pro judge is *cheaper* than matching
@@ -837,7 +836,7 @@ rule and the r03+ marginal stop, which cut 2 runs / **$1.14** with **0 best roun
 over the 107 recorded rounds (`waste-and-accounting/replay_stops.py`) — were **removed on
 2026-09-22** with every other judgement stop: the owner fixed the round count (baseline +
 `--rounds`, cut short only by the clock or a hard failure) and moved the choice of round to
-after the run.  Every round still emits its `cost.round` event.
+after the run.
 
 ---
 
@@ -999,7 +998,7 @@ storm independently spends a full failed round-trip to learn what its siblings a
 know, then sleeps on its own private backoff schedule.  That is the 2 833 waits / 17.7 h
 in §18.
 
-`codeverse3d/models/retry.py` adds a process-wide `StormGate` per model (`retry.py:449`):
+`codeverse3d/models/retry.py` added a process-wide `StormGate` per model (deleted 2026-09-22, below):
 
 * the first worker to see a 503 calls `hit()`, which closes the gate for a short,
   escalating window (never longer than `MAX_WAIT_S` — patience comes from the *number*
@@ -1087,8 +1086,10 @@ progress* is never cut — the deadline bounds retrying, not the call.  Past it 
 is `infra_failed`, which is excluded from every rate and re-runnable with
 `--redo-status infra_failed` (`eval/docs/EVAL.md` §7).
 
-**The wall-clock ceiling is only checked when money is spent.**  `BudgetGuard.check()`
-is called from `spend()`/`charge()`, so a run whose calls never *complete* is never
+**The wall-clock ceiling is only checked when money is spent** (so it was then; since
+2026-09-22 the guard has no money path — `check()` runs at the loop head, after each agent
+session that did work, at each generation phase's end and before a session or a single-shot
+call is bought).  `BudgetGuard.check()` was called from `spend()`/`charge()`, so a run whose calls never *complete* is never
 tested against `max_minutes`: nothing is billed, so nothing is checked.  That is how a
 `--max-minutes 90` run reached **200 minutes**.  The retry deadline is the root fix —
 every call now terminates within ~15 min and charges or raises, so the ceiling is
@@ -1244,13 +1245,18 @@ only what is billed.  `cost/billing.py` names the flat-rate backends
 counter, `billed_usd`, alongside `spent.cost_usd`.  `summary()` reports both:
 `spent_usd` (billed, real dollars) and `notional_usd` (list price, what the reports want).
 
-`gemini-cli` is deliberately **not** exempt: it authenticates with an API key, so its
+`gemini-cli` (removed in D103; agy in Gemini-API mode is the same case today) is deliberately **not** exempt: it authenticates with an API key, so its
 tokens draw on a real per-token quota even when that quota is free.  Unknown backends
 bill by default — a new provider nobody classified must be enforced, not exempted.
 Getting it wrong the other way reports a run as free when someone was billed for it.
 
 The corollary for benchmarking: an arm on a subscription backend and an arm on an API
 backend do not bill comparably, so compare them on `notional_usd`, never on `spent_usd`.
+
+> **2026-09-22 — the split is gone with its reader.**  Nothing enforces dollars any more (the
+> USD ceiling went in fbf89a5), so `billed_usd` and `cost/billing.py` fed nothing; the guard is a
+> clock and the record's money is the ledger at list price (the owner: 账本合计，按标价), a
+> subscription backend's rows included — which is what an arm comparison wants anyway (§32).
 
 
 ## 27. A 503 is per key at any instant — rotate before you wait (2026-08-26)
@@ -1270,7 +1276,7 @@ once **every** key in the pool has 503'd inside one logical call (a 22-key pool 
 times first).  What this buys per call is the whole storm wait it used to pay first (median
 5 s × the storm streak, up to 900 s); what it costs is one more round-trip on a fresh key.
 Follow-ups worth measuring: rank keys by recent latency (the 30 s keys are consistent), and
-record the key index in `telemetry/usage.jsonl` so the distribution of calls per key can be
+record the key index in `telemetry/cost.jsonl` so the distribution of calls per key can be
 read instead of probed.
 
 **Amended 2026-08-27 (owner's rule):** the first cut of this gated the rotation behind a
@@ -1322,8 +1328,8 @@ nothing, so the hedge is free while it storms; only a success-then-success waste
 *The ledger records the key and the attempt count.*  `keys.py` scanned 1 542 files of the corpus
 for the `"key": "…xxxx"` that `gemini.py:_once` puts in `ChatResponse.raw` and found none, so
 "is one key hammered" was unanswerable.  `rotate_with_retries(stats=)` hands back `attempts`
-(round-trips issued, hedged siblings included; 1 = clean) and `hedged`; `GeminiModel` puts both
-in `raw` and `attempts` on the raised `ModelError`; `cost/instrument.py` copies the key suffix
+(round-trips issued, hedged siblings included; 1 = clean) and `hedged`; `GeminiModel` puts
+`attempts` in `raw` and on the raised `ModelError` (`hedged` stays in the stats); `cost/instrument.py` copies the key suffix
 (last 4 chars, never more) and `attempts` onto every `CallCost` row (`key`, `attempts`, both
 defaulted so old rows load); `3dcode cost` adds a per-key table and a
 `tries/call` column (`CostBucket.attempts_per_call`) whenever the ledger carries them.
@@ -1553,3 +1559,83 @@ Secondary observation, not a controlled comparison: the paired sd of the battery
 this code is 0.131 against the A/A's 0.225 on the old code (n_for_power for ±0.02: ~172
 pairs against ~506).  Different runs and different arms, so it is an observation — but the
 direction is the one the fix predicts, since a retry storm is variance.
+
+## 31. Minutes: the steps of a run, minus provider errors (2026-09-22)
+
+The owner's definition: time every step of a run from start to end, do not count the time lost
+to 503 / token-limit / overloaded errors, and report the sum (按步骤记录并扣除错误时间).  It
+replaced six definitions that disagreed by up to 8x (on 52 resumed runs the record span said
+209 h where the active clock said 24.6 h): the record span (gallery), the bench process's wall
+clock (bench report), the compare cell's wall clock, the cost audit's active time, the budget
+guard's `elapsed_min` (ab_view) and telemetry-else-Σ-rounds (complexity_report).
+
+**What is timed.**  `contracts.run.StepTime{step, round, wall_s, lost_s}`, one per step:
+`plan`, `skeleton`, the scene's `textures`, `assets+env+layouts` (the three run side by side, so
+they are ONE step; `assets+env` with `C3D_ZONE_LAYOUTS=off`), `zones`, `assemble`, best-of-N `candidates` — run-level, on
+`RunRecord.steps` (persisted in `run_state.json` as they happen, the part of an aborted round
+that ran included) — and per round `generate` (one per phase: a phase's sessions run side by
+side), `build` (+ repair), `gates`, `render`, `judge` (+ a re-judge), on `RoundRecord.steps`.
+**`RunRecord.minutes`** = Σ (wall − lost) / 60 over all of them: THE number, the one every reader
+reports (`addons/select` per round, the gallery, `3dcode cost`, `3dcode show`, the dataset index,
+eval/bench).  Work after the run — a pick's texture pass or pairwise verdict, captions — is not a step
+of it (its money joins the ledger; its time is the pick's).  Harness glue between steps (git
+commits, skill bundles, writing records) is not a step either.
+
+**What is lost.**  `cost/tally.py`: a step opens a `Tally`; the meters book into every open one.
+An agent session books its `AgentResult.provider_wait_s` (the CLI's own 503 / 429 retries, read
+from its log by the agents).  An API call books everything outside its answered round-trips once
+one of them failed without an answer — the failed tries, their back-off and the key waits
+(`cost.instrument._RoundTrips`, fed by the per-attempt sink `models.retry.rotate_with_retries`
+already reports through; a backend that reports no round-trips — the SDK adapters — is charged
+everything outside the answer it returned).  A reply that came back unusable (bad JSON, empty)
+is the model's own time and is not lost.  Calls in one thread add up; threads side by side (fan-out
+sessions, judge samples, candidates) lose `max(wall) − max(wall − lost)` — what the slowest thread
+would have been spared.
+
+**One fallback.**  A record or a round written before step timing (`steps is None`) counts its own
+clock: the run's `extra["budget"]["elapsed_min"]` (all 470 archived records carry it), a round's
+`duration_s`.
+
+**Minutes are a statistic, `max_minutes` is a limit.**  `orchestrator.BudgetGuard` keeps counting
+every active second, errors included — it has to stop a run inside a 503 storm, which is exactly
+when the minutes stand still.  A run can therefore stop on `budget` with its minutes well under
+`max_minutes` (the stool run of 2026-09-22b: 51 minutes on the clock, a 2 100 s baseline session
+killed after its 503 / 429 retries).
+
+## 32. The ledger is the only record of money (2026-09-22)
+
+The owner's rule: the money of a run is its ledger's sum at list price (账本合计，按标价).  Before
+it the harness kept two books — the ledger, one row per call, and `BudgetGuard`'s running total,
+fed by twelve `charge` / `add` call sites — and `record.total_usage` took the guard's.  The guard
+never saw a round-trip the provider billed and the call discarded (a hedge loser that landed
+after the winner, a charged-but-invalid reply: the ledger's `source="extra"` rows), so the two
+drifted.  Selector: every `record.json` under `~/3dcodeverse_bench_out` and
+`~/3dcodeverse_runs` that has a `telemetry/cost.jsonl` (437 of 470): the ledgers sum to
+**$882.77**, the records to **$845.63**, and 119 runs differ by more than 5 %.  The live stool run
+of 2026-09-22b recorded **$0.3054** over a ledger of **$0.379**: its judge's hedged retry landed a
+second, discarded verdict for $0.0736 that only the ledger saw.
+
+What a run's money is now:
+
+* **`record.total_usage`** = the sum of `telemetry/cost.jsonl` (``cost.ledger.ledger_usage``),
+  read when the record is written (`BaseTrack._record`, `record.package_run`) — every billed row
+  exactly once: `live` (one per call), `session` (one per CLI session), `extra` (a billed round-trip
+  the call discarded).  `attempt` rows are forensics, their tokens already on their call's row.
+  Post-run work (a pick's texture pass, captions) joins it when the run is re-packaged.
+* **a round's `usage`** = the rows booked while it ran (`cost.tally`: `record_call` books every
+  priced row into the open tallies), so a judge's discarded-but-billed verdict and a killed
+  session's recovered usage land on their round; best-of-N adds its candidates' own tallies.
+* **an aborted round** reports its tally: `rounds/aborted_rNN.json` and
+  `record.extra["aborted_rounds"][i].cost_usd`.
+* **money by stage** is `cost.ledger.summarise` — `telemetry/cost.json`, `3dcode cost`, the gallery.
+
+Gone: the guard's `spent` / `billed_usd` / `calls` / `by_stage`, `charge` / `add` / `mark` /
+`stage_summary`, `usage_delta`, the snapshot's money fields (an old snapshot still loads),
+`_reconcile_billed_from_ledger`, `cost/billing.py`, `record.extra["cost_by_stage"]` and
+`["rounds_summary"]` (written, never read), the `cost.round` event (no reader; it restated the
+ledger by round and stage), `CostSummary.ledger_usd` / `unattributed_usd` / `post_run_usd` (one
+number now), and `C3D_COST_LEDGER` — whose `off` turned the one money record off, and whose other
+values made every command die (a `bool` Settings field fed `none` or a path).
+`BudgetGuard` is a clock: `check` / `ok` / `timeout_s` / soft cap / grace / the active seconds a
+resume carries — unchanged (§31 says why minutes and the clock differ).
+

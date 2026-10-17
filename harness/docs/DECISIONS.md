@@ -72,7 +72,7 @@ Pointers: EVAL, PAPER_WRITING = `eval/docs/*.md`; COST, RUNBOOK, ARCHITECTURE, I
   The cookbook is copied to `ws/.3dcode/cookbook.md` (gemini-cli cannot read outside the
   workspace); the MCP argv defaults to `cli_common.default_mcp_command(ws)`, i.e.
   `sys.executable`, for every backend (the track-side bare-`python` literals are gone).
-* **D10 gemini-cli needs a system-settings file (Δ).**  api-key auth +
+* **D10 gemini-cli needs a system-settings file (Δ; superseded by D103 — the gemini-cli backend is deleted).**  api-key auth +
   `dynamicModelConfiguration` (else silent model substitution) + `folderTrust.enabled=false`
   (else workspace MCP servers are silently disabled even with `--skip-trust`).  Served
   model is checked; mismatch → `exit_reason=model_substituted`.
@@ -696,7 +696,9 @@ Pointers: EVAL, PAPER_WRITING = `eval/docs/*.md`; COST, RUNBOOK, ARCHITECTURE, I
   a hero's escalated session that died transient with a failing check gets ONE more single-shot
   repair (`asset.storm_repair`).  The owner's rule for the storm (2026-09-07 evening): keep
   querying, keep retrying.  `single_shot_agent_id` / `single_shot_ctx` live in `tracks.common`
-  (they were never scene-specific).
+  (they were never scene-specific).  **Superseded by D103 (2026-10-13):** the single-shot storm
+  fallback, `GenerationResult.storm` and `asset.storm_repair` are deleted; a transient death gets the
+  round loop's one transport retry.
 
 * **D69 An interior scene's enclosure has an owner: the environment, from the plan's bounds
   (2026-09-07).**  Six interior runs of the day were judged "not enclosed — a diorama on a flat
@@ -874,7 +876,7 @@ Pointers: EVAL, PAPER_WRITING = `eval/docs/*.md`; COST, RUNBOOK, ARCHITECTURE, I
   one session per vendor CLI (gemini-cli ×2, claude-code, codex, agy) activated every routed bundle
   — 20 of 20, all before writing code — and never the control.  Reads are now ground truth: each
   backend records its CLI's own tool calls in `transcript.jsonl` and the read probe reads those
-  first (the atime probe was wrong on every session).  gemini-cli pins `skills.enabled`,
+  first (the atime probe was wrong on every session).  gemini-cli pins `skills.enabled` (moot since D103),
   claude-code streams JSON; `.agents/` is harness-owned and git-ignored.  SKILLS_LEDGER §0b.
 
 * **D82 One verdict per check (2026-09-22).**  A tool returns the round's own gate, computed by the
@@ -1080,7 +1082,7 @@ Pointers: EVAL, PAPER_WRITING = `eval/docs/*.md`; COST, RUNBOOK, ARCHITECTURE, I
   as sunken there, as they already did for zone-placed trees.
 
 * **D101 The scene track is language-dispatched through `SceneRuntime` (2026-09-24).**  In preparation for
-  `scene_blender` (`/home/yipeng/3dcodeverse_runs/scene_blender_2026-09-24/DESIGN.md` §11 phase 0):
+  `scene_blender` (`~/3dcodeverse_runs/scene_blender_2026-09-24/DESIGN.md` §11 phase 0):
   `languages/base.py` `SceneRuntime` (a `LanguageRuntime` plus `zone_file`, `asset_file`, `assemble`,
   `probe`, `render_scene`) is the only way the scene stages (`tracks/scene.py`, `tracks/scene_assets.py`),
   `Services.render_scene` / `assemble_scene` (which now take the runtime), the scene tools (`scene_probe`,
@@ -1089,6 +1091,816 @@ Pointers: EVAL, PAPER_WRITING = `eval/docs/*.md`; COST, RUNBOOK, ARCHITECTURE, I
   implements it by delegation, so behaviour is byte-identical (prompt manifest unchanged, not re-blessed).
   The design's `probe_args` member was left out: the probe's driver flags are the runtime's own business
   inside `probe`/`build`, and nothing outside a runtime would read them.  `shader_probe` stays three.js-only.
+
+* **D102 scene_blender phase 1: contracts, the Blender build and the geometry gates on a census GLB (2026-09-24).**
+  DESIGN (`~/3dcodeverse_runs/scene_blender_2026-09-24/DESIGN.md`) §11 phase 1, owner decisions D1–D12.
+  `Language.SCENE_BLENDER` is the scene track's second language (`src/scene.py` entry, Z-up frame in
+  `conventions.LANGUAGE_FRAME`, `HARNESS_OWNED_SRC` `src/lib/`), with `SceneBlenderRuntime` (`languages/scene_blender`).
+  `src/scene.py` is assembled DATA (`ZONES` / `ASSETS` / `HEROES` / `CAMERAS`, the plan's cameras converted
+  to the Blender frame; the plan stays Y-up, D12).  The build is one Blender process (`wrappers/run_bpy_scene.py`):
+  env, heroes (GLB import, D6), assets and every zone each run in isolation.  A builder that raises is an
+  ERROR on its `file:line`, and everything it created is removed, so the zone is dropped while the rest is
+  still measured.  The geometry gates stay the JS ones.  The wrapper writes `artifacts/census.glb` with the
+  harness writer (`wrappers/_census_glb.py`, from the evaluated depsgraph: collection instances become
+  clones, other instance clouds become `EXT_mesh_gpu_instancing`, fog volumes are not matter, custom props
+  become `extras`).  `probe_scene.mjs --glb` boots `runtime_js/lib/glb_scene.mjs` on it with no settle
+  and no camera repair (D3).  `probes.run_probe(glb=, facts=)` merges the bpy facts the GLB cannot carry
+  (fog, background, lamps, drivers, handlers, unique/instanced triangles).  D2: no draw gate offline; an
+  ERROR above `MAX_TRIS_SCENE` UNIQUE triangles instead.  D10: Python drivers and added `bpy.app.handlers`
+  are a lint ERROR and a census ERROR.  `AssetPlan.kind` gains `bpy` (D5).  The schema a planner is
+  handed keeps scene_threejs's enum (`SCENE_ASSET_KINDS`), so every scene_threejs payload stays
+  byte-identical (manifest not re-blessed).  scene_blender's tool list is held out of the manifest
+  (`UNBLESSED_LANGUAGES`) and its prompt files are pending (`PROMPTS_PENDING`) until phase 3.  The
+  object lint's bpy traps are shared (`blender.call_traps` / `store_traps` / `source_traps`), not copied.
+  Measured on the design's probe scenes: bpy 520 760 / 619 968 triangles = census 520 760 / 619 968;
+  build 5.0 s / 7.5 s (wrapper 3.4–5.3 s, of which GLB 0.1 / 0.8 s; JS probe 1–2.4 s).
+  `render_scene` raises NotImplementedError until phase 2.
+
+* **D102b scene_blender pictures come from Blender; the camera checks and the metrics schema stay the JS host's
+  (2026-09-24, lane B of D102; written as "D103, the lead renumbers" — renumbered D102b, as its commit names it).**  DESIGN §11 phase 2, owner D1/D2/D3/D8.
+  `spatial/render_blender.render_blender_scene` is what the language's `render_scene` calls: (1)
+  `runtime_js/fit_orbit.mjs` fits the orbit rig to the build's `census.json` with the unchanged `orbit.mjs`; (2)
+  `languages/wrappers/render_bpy_scene.py` opens `artifacts/scene.blend` and renders the authored cameras × every
+  time plus the first three overviews at t0 — the judge's views and the motion pair, nothing else — with
+  harness-owned settings (Cycles CUDA 32 spp adaptive + OIDN, fixed seed, AgX / exposure 0, RGB PNG; frames
+  `1 + round(30 t)`); (3) `render_scene.mjs --external-frames` loads the census GLB through the language's host
+  entry and computes every camera check on it, but its luminance statistics from the Blender PNG
+  (`host_metrics.imageFrameStats` = the one `frameStats` on an image), no settle / repair / post; (4)
+  `render_scene.render_set_from_metrics` (split out of `render_scene`, byte-identical for three.js) builds the
+  RenderSet.  metrics.json has the three.js schema plus `language` and `blender` (engine, device, samples, the
+  fallback, per-frame and per-step times).  GPU sharing (D8): `Settings.render.blender_gpu_slots` (2) flock'd
+  slots under `<cache_dir>/slots/blender_gpu/`; a render waits `blender_gpu_wait_s` (60 s) and then renders on the
+  CPU, and a GPU run that dies without a result is rendered once more on the CPU; a timeout is the scene's, no
+  retry.  `blender_engine` (cycles | eevee — EEVEE runs under `gl_render.GPU_ENV`) and `blender_samples` (the
+  profile dial: economy 16 · balanced 32 · quality 64).  The frame and placement gates keep one set of
+  thresholds and carry a per-language fix-hint table (`frame_metrics.HINTS` keyed by `metrics["language"]`,
+  `scene_placement.LANGUAGE_WORDS` by `census["language"]`); D2's render-time WARN is `slow_frame` (median
+  judged frame > 10 s GPU / 33 s CPU, naming the content group with the most triangles).  `3dcode doctor` gains
+  `blender cycles` / `blender eevee` / `blender gpu slots`.  Measured on this box, 1024x576, 7 frames (2 authored ×
+  2 times + 3 overviews), GPU shared with other work: Cycles CUDA 32 spp 0.9-1.6 s/frame on the 520 k-tri probe
+  scene (13.3 s for the whole render incl. 2.4-3.6 s geometry pass), 1.4-4.2 s/frame on the heavy one (21.1 s);
+  16 spp 10.5 / 18.9 s; 64 spp 14.1 / 36.2 s; CPU 32 spp 33.7 / 80.9 s; EEVEE 64 24.3 / 66.4 s (first frame
+  9-20 s of shader compile).  Not done here: the eye-level rig views get no Blender pixels (DESIGN §5.2: nobody
+  reads them), so their exposure is unmeasured; `no_fog` overviews unlink only the world volume (a bounded fog
+  object still renders).
+
+* **D103 gemini-cli is deleted; Google's models run through agy (owner, 2026-10-13).**  gemini-cli and its
+  retry layers were the heaviest vendor-specific burden in `agents/` (a per-session system settings file,
+  chat-record reading, stderr retry-line parsing, a key-rotating retry loop inside the backend, a storm
+  fallback above it), and agy 1.3.4 now takes a Gemini API key and an MCP server, so Google's models lose
+  nothing.  Deleted: `GeminiCliAgent`, its system settings file, `read_gemini_chats`, `GeminiRetries`, the
+  2–3-attempt retry loop with `retry_window_left` / `_retry_key` / `RETRY_KEY_WAIT_S` / `QUOTA_MAX_ATTEMPTS`,
+  `Settings.binaries.gemini_cli`, `cli_common.invoke`'s `attempt` / `soft_timeout_s` (captures are always
+  `stdout.json` / `stderr.log`), `find_json_object`'s multi-line scan (only gemini-cli printed indented
+  JSON), the doctor rows `gemini-cli` and `gemini-cli skills setting`.  `agents/registry.KINDS` =
+  `("claude-code", "codex", "agy")`; the default generator (and balanced / quality) is `agy:gemini-4-argon`.
+  agy runs in **Gemini-API mode only** (owner, same day: no subscription sign-in, no Claude models, and
+  the default is `agy:gemini-4-argon`, `DEFAULT_AGY_MODEL` for a bare `agy`; no keys → `available()` is
+  false, the session fails at once) — one key per session from THE shared pool (`models.gemini.shared_pool`,
+  `KeyPool.lease_session_key`, no in-flight slot; a machine-wide flock lease per key keeps parallel runs
+  one session per key until the keys run out, then shares — added after a 14-run parallel wave put 4
+  sessions on one key; `shared_pool` also starts each process at a random key), the outcome reported back (429 → cooldown, 401/403/
+  `API_KEY_INVALID` → dead, 5xx, ok, skip); a fresh HOME under `<cache_dir>/agy_homes/…` holding
+  `.gemini/antigravity-cli/settings.json` = `{"modelProvider": "gemini"}` (without it agy ignores
+  `GEMINI_API_KEY` and demands a login) and `.gemini/config/mcp_config.json` with the `3dcode` server
+  (`env.HOME` = the real home), deleted after the session once the tool trace is read from its
+  conversation db; argv `--model gemini-api://<bare id> --effort <low|medium|high>` (any id goes verbatim,
+  e.g. gemini-4-argon; effort from an agy-style `-low/-medium/-high` suffix, default `high` — the Gemini
+  API's own default, what gemini-cli sessions ran at); priced at Gemini list price with output = output −
+  thinking and thoughts = thinking (agy's `output_tokens` already include thinking: billed once);
+  `PUPPETEER_CACHE_DIR` = the real cache for the agent's shell.  Deleted with the subscription mode:
+  `available_models` / `resolve_model` (the `agy models` probe that added an effort suffix), the AGENTS.md
+  shell-fallback paragraph, and the $0 booking.  No retry loop in the backend: agy retries its own
+  model calls (≤ 30 s waits since 1.3.4, stops at once on a spent daily quota), and a transient death goes
+  to the round loop's ONE transport retry (`tracks/lifecycle`), which takes a fresh key.  Workspace
+  materialisation writes `AGENTS.md` + `CLAUDE.md` only — no `GEMINI.md` (agy reads it AND `AGENTS.md`,
+  so the body was loaded twice), no `.gemini/settings.json` — and `.antigravityignore` replaces
+  `.geminiignore` / `.aiexclude`.  doctor: CLI rows agy / claude / codex and a new `agy gemini keys` row
+  (OK "N-key pool"; FAIL without keys).  Prompt manifest re-blessed
+  (context files, generator id).  Consequences: **no single-shot storm fallback** — `tracks.common.
+  generate_for` is plain `generate()`, `GenerationResult.storm` is gone, and so are the asset ladder's
+  storm-repair rung (strategy `escalated+repair`) and the events `generate.storm_fallback` /
+  `asset.storm_repair` (D68 superseded; `repair.storm` and the lifecycle transport retry stay); agy gets
+  the 3dcode MCP tools (it had none); the GEMINI.md double load is fixed; effort defaults to
+  `high`.  Live facts (2026-10-13, agy 1.3.4): API mode lists gemini-3.8/3.7/3.6-flash and 3.1-pro; the
+  subscription sign-in no longer serves gemini-3.7-flash (only 3.8-flash, claude-sonnet/opus-4-6, gpt-oss).
+  The profiles' $ / score expectations were measured on gemini-cli:gemini-3.6-flash and are not re-measured
+  on agy:gemini-4-argon ($2.00 / $10.00 per M, ~2.7× 3.6-flash).
+
+* **D104 Blender 5.2.2 LTS is THE supported Blender; the judged-frame fast path is Cycles CUDA + GPU OIDN +
+  persistent data (owner, 2026-10-14).**  The owner replaced 5.0.1 with 5.2.2 LTS and dropped 4.2 / 5.0
+  compatibility ("不需要兼容5.0.1了"): `BLENDER_MIN = (5, 2)`, `resolve_blender()` looks for `blender-5.2`
+  then `blender`, doctor fails anything older.  Verified on 5.2.2 (this box, RTX 5090, driver 610.88): the
+  whole offline suite (1634) passes unchanged; the API facts the lints and prompts state were re-probed —
+  Principled inputs ('Anisotropic' and 'Specular Tint' still exist; 'Thin Wall', 'Thin Film Thickness/IOR'
+  are new), boolean solvers are FLOAT / EXACT / MANIFOLD ('FAST' raises), sky types SINGLE_SCATTERING /
+  MULTIPLE_SCATTERING / PREETHAM / HOSEK_WILKIE, `Material/World/Light.use_nodes` are deprecated (removed in
+  6.0; every new datablock already has a node tree), geometry-nodes modifier inputs moved to
+  `getattr(mod.properties.inputs, 'Socket_2').value = v` (`mod['Socket_2'] = v` raises TypeError — 5.2
+  Python API notes), Blender's python is 3.13 and the user site is no longer loaded (the wrappers are
+  stdlib + bpy + numpy only, as before).  Render measurements (1024x576, 460 objects): Cycles CUDA 32 spp
+  + GPU OIDN 0.64 s/frame; with `render.use_persistent_data` the synced scene + BVH survive between the
+  cameras of one job — 8 frames 5.3 s → 2.2 s, 0.21 s/frame after the first; 64 spp 0.69 s, 128 spp
+  0.86 s; CPU 2.3 s; EEVEE in background 5.2 s/frame + a 12 s shader compile (slower than Cycles GPU here,
+  so Cycles stays the default); Workbench 0.12 s.  OptiX is unavailable under WSL2 (libnvoptix: init error
+  7804) and setting `compute_device_type = 'OPTIX'` then back to CUDA crashes Blender — the harness never
+  probes it (`render_bpy_scene.setup_render`, doctor).  Shipped: persistent data on for every Cycles job,
+  `Settings.render.blender_frame_time_limit_s` (20 s cap per frame via `cycles.time_limit`, 0 = none) in
+  the job and in `metrics.blender`, the doctor times one 256x144 32-spp frame on the fast path, two lint
+  traps shared by both bpy languages (`solver = 'FAST'` → ERROR; `x["Socket_…"] = …` → ERROR with the 5.2
+  idiom), and the cookbook / contract / docs say 5.2 LTS.  Not re-measured on 5.2.2: the skills' "verified
+  on 5.0.1" geometry numbers (subsurf shrink, primitive extents) — properties of the mesh code, not of the
+  renderer; the live gate tests that exercise them pass on 5.2.2.
+
+* **D105 The argon scene-tuning program: per-model variants, scene_blender first-class, scene judge v2 with
+  strict placement standards, and the eval loop with argon as generator AND judge (owner, 2026-10-14/15).**
+  The owner wants the harness specialised per model and looped — "变体按单个模型分", scene_blender "都可以补齐",
+  a judge that "彻底解决 floating、穿模", "连通性…标准…严格一些", ~30 generated prompts per iteration that get
+  harder, both scene languages at once, "argon 用来生成 code … 同时也要用来作为 judge", and a standalone repo.
+  Decisions.  (a) **Variants** (`prompts/variants.py`): an overlay `codeverse3d/prompts/variants/<name>/`
+  shadows prompt files (a jinja ChoiceLoader; the base environment is untouched so base rendering is
+  byte-identical), `codeverse3d/skills/variants/<name>/` shadows bundles and `routes.toml` adds typed
+  boosts / disables / rows (a standing row never reaches the gate-fired floor 90), `variant.toml` names
+  version + generators + knobs ⊂ {skills_max, skills_only}.  Selected EXPLICITLY — `3dcode make --variant`,
+  `Settings.variant`, or `Settings.variants` by the exact generator id then `<kind>:<served model>` — never a
+  regex over the id (L4); frozen on `RunOptions.variant`; recorded in `environment.variant`, `extra.variant`
+  {name, version, hash}, `prompt_hashes.variant` and `SettingsSnapshot.variant*`; the plan stage key names
+  the variant only when set.  One variant per process (knobs are process-wide, the overlays are
+  context-local).  The `argon` variant ships EMPTY (v1) so the loop's iteration 0 measures the base.  The
+  judge is NOT variant-scoped: it is the instrument.  (b) **scene_blender** runs end to end: prompts
+  (system / contract / cookbook / asset / effects_catalog), bpy sibling templates chosen by
+  `tracks.scene.SCENE_TEMPLATES[language]` (the three.js payloads stay byte-identical), a planner template per
+  (track, language) whose schema carries the language's asset kinds (`bpy`, `blender_glb`), a bpy asset ladder
+  checked in Blender, a harness-owned starter library (13 modules under `languages/scene_blender/starter/src/lib/`
+  — D51 extended to scene_blender; the skeleton is built from it), one transport retry per stage session, and
+  three bundles `c3d-bpy-scene-{placement,lighting,materials}` on routes R29–R34 (R34 is the three.js gate-fired
+  twin on the seating kinds).  (c) **scene judge v2** (`scene_v2.yaml`; `scene_v1` frozen for replays):
+  defects floating_asset .10/.60, sunken_asset .08/.65, interpenetration .08/.70, wrong_scale .06/.75,
+  hard_edged_particles, missing_planned_element, hero_misplaced; placement caps per measured kind incl.
+  free_exempt .75; graded must-acceptance; a CALIBRATION block and six anchors per criterion so the judge uses
+  the whole range; overview views are declared to hide ceilings; CONTACT CROPs at the worst placement findings
+  (the gate writes `data.bbox`); a fourth overview `overview_low_front` (el 7°, `fitContactCamera`) and a scene
+  montage cap of 4; the measured-absent veto is scoped to the rule's kinds with `veto_warn_keys` (a WARN-band
+  hover keeps the judge's tick, a `no_fog` ERROR no longer cancels the floating veto) — SCORING_VERSION 4;
+  `Settings.judge.thinking` (argon thinks only from 'medium') + `3dcode judge --thinking`; the fixed evaluator
+  runs the placement gate on scene cells.  `judge_prompt_hash` moved for every rubric (RIG_RULES is shared).
+  (d) **Strict placement standards** (`Settings.placement`, read at call time): floating ERROR 0.08 m or > 2
+  (was 0.15 / > 3), sunk ERROR 0.20 m + 20 % (was 0.30 + 25 %), interpenetration WARN 0.10 / ERROR 0.35 (was
+  0.20 / 0.60; the host's OVERLAP_MIN_FRAC is 0.10); new kinds `free_exempt` (share of 'free'-tagged assets
+  > 25 % WARN / > 50 % ERROR — the tearoom run had tagged 47 %) and `cantilevered` (resting on ≤ 1 of ≥ 4
+  foot columns); the summary carries measured counts and the thresholds; a hero's size is one instance, not
+  the union of its clones; `scene_regate` / `scene_stats` count typed kinds and accept Blender records.
+  Object-track connectivity thresholds are unchanged (follow-up).  (e) **The loop** (`eval/bench/loop.py`,
+  EVAL.md §10): init / generate / run / diagnose / compare / judge-calib / accept / rollback / status.
+  Batteries are generated by the planner model from typed rung rules (five rungs: zones, asset types,
+  instance counts, lighting, interior / water / particles, a moving hero, scale constraints), ids stable per
+  rung so iterations pair; `run` = one child `run_bench --variant` per language with `C3D_JUDGE__THINKING`
+  and stop handlers; the judge of the loop is `gemini:gemini-4-argon` at medium on `scene_v2`; the verdict is
+  `stats.decide` plus a placement-ERROR veto; the ledger is `eval/bench/data/loop/<name>/ledger.jsonl`;
+  `accept` bumps the variant version and snapshots the overlays, `rollback` restores them.  (f) **Standalone**:
+  the head-to-head scripts and batteries that compared this harness with other checkouts were deleted; no
+  path under a home directory remains in the tree.  Consequences: the prompt manifest gained the scene_blender
+  and variant scenarios and was re-blessed (judge payloads + the new `"variant": ""` spec field); ARCHITECTURE
+  §2 names the starter tree; every C3D_VARIANT* switch is plan-side (no `--pin-plan`).  Known limits: agy's
+  MCP config has no tool-timeout key; the materials bundle has no deterministic target (SKILLS_LEDGER §6.1);
+  the loop's first live `generate` / 30-run `run` are iteration 0.  **Amended 2026-10-15 (iteration 0, first
+  wave):** 24 of the 41 Blender `interpenetration` ERRORs were members of ONE room shell (lintel × lid, trim ×
+  trim) — the placement host now exempts every row under a `RoomShell…` root as the enclosure (both scene
+  languages; the same name the overview rig lifts; superseded by D111: a room shell is a scenery root of a
+  marked scene and the name rule is deleted), and `lib.architecture.room_shell` clamps an opening's
+  sill/head into the wall (a 3.2 m door head in a 3 m room had inverted the lintel into a slab above the lid).
+  Runs of iteration 0 that built before the fix were gated by the old rule (noted in the loop ledger).
+  **Amended 2026-10-15 (iteration 0 read, iteration 1 written):** 60 argon scenes (30 per language, rung 1,
+  argon@medium judge): picked mean 0.758 three.js / 0.754 Blender, baseline 0.672 / 0.647 (the refine
+  round is worth +0.09 and the 90-min clock cut it in 55 % / 43 % of the runs).  What the gates and the
+  judge measured, and what changed for it: (a) placement — three.js 7/30 runs with interpenetration
+  ERRORs + 5/30 sunken, Blender 13/30 + 5/30; every agy zone session had called `check_placement` and
+  then edited without re-checking; 11 of the 29 three.js rows were props inside a `…MidProps` Group
+  (measured as one union box), 9 of the 13 Blender runs had scattered small props INTO placed carts /
+  racks / shrubs.  `lib.place.clear_mask` (Blender) + a `keepClear` recipe (three.js) mask placed
+  footprints out of scatter; the cookbooks' placement chapters state "one placed thing = one direct
+  child" and the slope rule; (b) `hard_edged_particles` 27 % / 17 % of runs, and the brief's "soft
+  particle effect" must-item failed with it — Blender had NO soft particle at all (translucent
+  Principled puffs, metaballs, tori): `lib.materials.volume` (a Principled Volume, no surface; 40
+  puffs = +0.7 s per 32-spp frame on 5.2.2) and a "Soft particles" chapter in BOTH cookbooks, inlined
+  into every zone brief (`ZONE_RECIPES`; the inlining budget rose 24 k → 30 k chars because the last
+  chapter was being clipped on scene_blender); the three.js fireflies recipe now carries a radial
+  `softDot` sprite instead of the bare `PointsMaterial` the judge penalises; (c) three.js zones
+  DROPPED at assembly (a run scored 0.0 with three empty zones): `walk(fig)` at build time, `import {
+  concrete }` of a name `lib/materials.js` does not export, `mergeGeometries` → null — the JS lint now
+  verifies every named import against the target module's exports (`_js_lint.check_named_imports`,
+  ERROR), the other two are prompt rules; (d) the brief's camera line "tracks / dollies along … at
+  1.6 m" was a must-have no fixed-camera render can satisfy (unverified in 5/60 runs, a
+  `missing_must_acceptance` cap on the whole score): the loop's brief generator writes a FIXED
+  eye-level viewpoint and migrates the cached rung prompts in place (ids unchanged, so the pairs
+  hold); (e) 172 `asset.generate_failed` outages in the first ten minutes (30 runs planning and
+  single-shotting assets at once against the 64-slot pool; 8 zone stages fell back to single-shot and
+  shipped the crashes in (c)): `run_bench --stagger` (loop default 40 s, the two languages offset by
+  half of it).  The argon overlay (variant v1 → v2 on accept) now shadows `tracks/scene_zone.j2` and
+  `tracks/scene_zone_bpy.j2` with a "Before you return" block stating (a)–(c) with their numbers, and
+  `routes.toml` boosts the two placement skills to the top of the standing list (R14 75 → 89, R29
+  80 → 89).  Not changed on purpose: the judge (frozen for the compare), the run shape (2 rounds, 90
+  min, 15 + 15 parallel), the refine briefs (iteration 2's lever).  Skills deep-read rate stays low
+  (three.js 0.013, Blender 0.175): the chapters now travel inside the brief instead.
+
+* **D106 The scene track states REQUIREMENTS, never templates (owner, 2026-10-15).**  Iteration 0 of the
+  argon loop produced 60 scenes of one shape — a block in the middle of a flat plate, ringed 360° by
+  identical hills, three zones tiled in a ~40 m square, nothing beyond the bounds — and the owner ruled
+  that copying must be impossible to reproduce it: the harness states what must be true, where, and how it
+  is measured, and mandates no shape, count, construction, layout, camera formula or code structure the
+  brief did not ask for.  Kept, and only these: (1) INTERFACE — file / function names the wrapper calls,
+  ctx fields, frames / units / naming from `conventions.py`, what the harness hands in; (2) sandbox rules;
+  (3) MEASURED requirements with their thresholds, phrased as requirement + measurement (never as the one
+  construction that satisfies them), plus the library as an OPTIONAL toolbox under its real API names.
+  "always / never / must" wording outside those three classes is gone.  DELETED: both scene cookbooks
+  (`prompts/scene_threejs/cookbook.md` 1 015 lines, `prompts/scene_blender/cookbook.md` 1 365 lines —
+  interface and language facts moved into `contract.md` / `system.md`, the craft condensed into SHORT
+  optional practices in the skills: no code block over ~12 lines in any prompt or skill, prose + the
+  library's API names, numbers only where a gate or the judge measures them); `ENV_RECIPES` /
+  `ZONE_RECIPES` / `ZONE_RECIPES_MAX_CHARS` / `refine_recipes` / `cookbook_sections` and every
+  `recipes=` kwarg in `tracks/scene.py` and `tracks/prompting.py` (the same four ENV + six ZONE chapters
+  inlined into every session, "copy their numbers and snippets"); the plate-and-ring env SKELETONS
+  (three.js `starter/src/env.js` CONTENT_RADIUS + radial flat mask + `worldShell` ridge +
+  `makeOutskirts` under "TUNE these; do not replace", kept byte for byte by 29 of 30 scenes;
+  scene_blender's `flat = span/2 + 15` feeding `terrain.make_height_at`, 21 of 30) — both are now
+  placeholders: the interface exports, a level plate named Ground sized from the plan, one light rig, a
+  fog, `INTERIOR` as data, and a comment listing the measured requirements; the zone / asset stubs no
+  longer grid contents inside the bbox or say "keep everything inside it"; the RING GATE (`no_backdrop`
+  ERROR whose hint prescribed "24-40 SOLID pieces at 0.6 × fog far", written by 57 of 59 plans) is now
+  `world_edge`, a WARN stating the measure (standing geometry ≥ 2 m past 1.25 × the half-extent) with
+  open closures; the `underdressed` ERROR with its 12-25 / 25-60 / 300-800 per-zone counts is an INFO
+  `density_note` (the counts the brief states are its acceptance items); `out_of_bounds` is a WARN on
+  PLANNED contents only, margin max(5 m, 10 % of the span) — unplanned scenery past the bounds is never
+  reported; the three-depth-layer COMPOSITION rule (planner brief, both cookbooks, `scene_v2.yaml`,
+  `prompt_builder`, `c3d-scene-composition`'s "Build in this order" + bounds-centre camera formula +
+  ring arithmetic) and the camera recipe (D = 1.5 r / tan(fov/2), 3-4 cameras, "sees 2+ zones / ≥ 70 %
+  of the bounds", frame-gate hints "distance ≈ 1.2 × span, fill the bounds"); "bounds = the playable
+  area, as small as the brief allows" + "3-6 zones tile the bounds" + "terrain within ±1.5 m of y = 0"
+  (`lib/terrain` `flat_radius` default 45 → 0); the argon `c3d-scene-composition +14` boost.  REPLACED
+  BY: planner briefs that state the measurements (`cameras[0]` content ≥ 20 %, lens ≥ 0.5 m clear, no
+  world edge from any authored camera, seat thresholds, exposure band, motion visible at t = 0..1.5 s,
+  `stamped_ring` ≥ 8 same-size copies on a circle, unmet `must` caps 0.60) and define `bounds` as the
+  DETAILED area the harness measures against, not a cage — the world continues past it; zone / env / asset
+  / refine briefs and the ten scene skills rewritten as requirement + measurement + a few strong optional
+  practices; the brief's `beyond` field (what continues past the detailed area, a must item); `scene_v2`
+  anchors and defects rewritten to "what the BRIEF's place would have" plus a `diorama_look` defect
+  (penalty 0.05, no cap); the loop's brief generator writes ONE fixed viewpoint at a height the place
+  justifies and 15 prompts per language (was 30).  Consequences: `materialize_workspace` writes no
+  cookbook section / file for a language that ships none; `prompts/_claims.toml` rows re-pointed at the
+  contracts; `tests/prompts/manifest.json` re-blessed for every scene scenario; the judge's calibration
+  (`bench.loop judge-calib`) must be re-run before the next `accept`, since what the judge is asked
+  changed.  NEXT (done, D107): the other six cookbooks (blender, cadquery, threejs, urdf_blender,
+  glsl_shader, opengl_python) follow the same rule — the graphics `seed_recipes` path and
+  `select_cookbook_chapters` stay until then.  Open: `content_small` still grades `cameras[0]` as ≥ 20 % content excluding ground
+  and water (a beach / moor / lake viewpoint fails by nature); planner temperature 0.4 unmeasured for
+  plan diversity.
+
+* **D107 Every track states REQUIREMENTS, never templates — no language ships a cookbook (owner,
+  2026-10-15).**  D106's rule applied to the six remaining languages.  DELETED: `prompts/{blender,
+  cadquery,threejs,urdf,glsl_shader,opengl_python}/cookbook.md` (999 / 413 / 523 / 434 / 293 / 166
+  lines) and `glsl_shader/examples/aurora_ridge.frag`; their INTERFACE and LANGUAGE facts (what the
+  wrapper calls, frames / units / naming, API traps that are build or lint errors, what the census /
+  renderer measures) moved into `contract.md` / `system.md` as short statements, their CRAFT into a few
+  short optional practices in the track's skills; recipe libraries, snippet collections and
+  prescriptive numbers are gone.  KEPT exactly: the object tracks' bbox / dims / connectivity / joint /
+  part-naming contracts, sandbox rules, triangle budgets — and ONE executable interface example per
+  `contract.md`, which `tests/prompts/test_snippets_run.py` (blender / cadquery / threejs / urdf /
+  glsl_shader) and `tests/graphics/test_gl_runtime.py` (opengl_python) run through the real runtime,
+  pinning the interface (builds, exports, on the ground, moves), never a shape, a part name or a count.
+  The PLUMBING went in the same change, so a cookbook is not a concept any more rather than a tolerated
+  absence: `RunContext.cookbook_text` and every reader; `materialize_workspace(cookbook_text=…)`, the
+  `.3dcode/cookbook.md` copy and the "## Cookbook" body section; `format_error_report`'s cookbook
+  argument and `repair.relevant_cookbook_section` (the repair prompt now carries the error report, the
+  lint findings' fix hints and the routed skills' pointers — nothing language-specific beyond that);
+  `prompting.select_cookbook_chapters` / `is_always_chapter` / `COOKBOOK_SYNONYMS` / `COOKBOOK_ALWAYS`
+  and the `cookbook_excerpt` template variable (generate_static / generate_articulated /
+  generate_graphics / generate_static_part / repair lose their "copyable snippets live in
+  .3dcode/cookbook.md" lines); `prompts/sections.py` whole (`find_section` and the splitter
+  nothing called); the graphics recipe SEEDING
+  (`tracks/graphics.seed_recipes` and its helpers, the uncached "recipes" stage, the harness-owned
+  `src/recipes.glsl`, `compose(recipes_src=…)`, the `redefines_recipe` lint, `Settings.limits.seed_recipes`
+  / `C3D_SEED_RECIPES`, the `recipes.seeded` event); `record.prompt_hashes["cookbook"]` (no new
+  session records it; a pre-D107 run resumed after it carries its earlier sessions' hash
+  forward, which is correct for those rounds).  PLANNER (the same rule, applied to the plan
+  budget): the PLAN BUDGET block states a floor and a detail minimum ONLY when the request is
+  evidence of them (a brief, or ≥ `EVIDENCE_MIN_CHECKLIST` checklist items) — the only case
+  `plan_quality_complaint` re-asks on them; without evidence it states the ceiling and "nothing
+  here sets a count" (the "boxes at different sizes" complaint rides along as soft, so "a stool"
+  may be four boxes); the `target_leaves` line and every "(2 or more)" / "3-6 elements" count are
+  gone; the graphics pass floor is 1 (`GRAPHICS_MIN` 3 → 1, `min_assemblies` 0) and the
+  "pass count correlates +0.40" sentence, the three-dust-layer example and "numbers everywhere"
+  left `plan_graphics.j2` (the graphics twin of D106's three-depth-layer rule); the graphics
+  plan example is a tide pool with two passes (it was the CLAUDE.md demo brief, with a
+  "Grade: vignette, aberration, tonemap + gamma" pass that every skeleton then carried as a TODO);
+  `plan_static.j2` lost "do NOT nest a leg / prefer nesting" and the mandated dimension /
+  ground acceptance items (the harness adds those itself); the brief's and the plan schema's
+  "3-8 / 6-12 / 8-16" ranges are now the validators' real maxima ("up to N").  JUDGES
+  (non-scene) softened where a criterion rewarded a construction rather than the object: the static
+  0.9 calibration point ("every part crisp with bevels/chamfers/tapers/profiles") → "the edge
+  treatment, profile and hardware the real object has"; `primitive_only` / `detail_below_part_count`
+  (static, articulated, asset, reference) fire only where the real object has the shaping that is
+  missing; articulated's geometry-detail anchors count the hardware the real mechanism SHOWS
+  (concealed hardware is not expected); shader_v2's depth criterion credits the scales the subject
+  has (a flat style the brief allows is not docked for depth) and `candy_saturation` excuses a palette
+  the brief asked for; the judge's improvement-plan example no longer prescribes tapering legs from
+  45 to 30 mm; the static proportion anchor states the contract gate's real tolerance
+  (max(10 mm, 10 % of the extent) per axis) instead of an unmeasured ±5 %.  Every measured cap,
+  floor and penalty is unchanged.  SKILLS: no code fence over 12 lines in SKILL.md or a reference
+  (`tests/skills/test_library.py`, was 20 in the body only); `test_freshness` no longer treats prompt
+  markdown as a source of callable names and fails any bundle that mentions a cookbook.
+  CONSEQUENCES, read as known changes, not bugs: (0) a run made before D107 still rebuilds and
+  resumes: the glsl build composes its `src/recipes.glsl` when the file exists
+  (`glsl_shader.LEGACY_RECIPES`, never a stray file), and `ensure_materialized` re-materialises a
+  workspace that still holds `.3dcode/cookbook.md` (`agents.materialize.needs_rematerialize`),
+  which also deletes the file; (1) the glsl baseline loses the seeded recipes
+  (measured 2026-08-26, refs_v2_graphics aurora brief, flash: seeding was the lever against the
+  comb-of-bars aurora) — the next graphics battery is the measurement; (2) a single-shot repair prompt
+  has no language-specific excerpt any more, so a lint ERROR's `fix_hint` is the whole guidance;
+  (3) `tests/prompts/manifest.json` must be re-blessed once, after every lane's prompt / skill /
+  skeleton change, for every non-scene scenario (and the scene ones whose judge text moved); (4) the
+  judge calibration (`bench.loop judge-calib` / `addons.calibration`) is re-run before comparing an
+  object-track battery with one judged before this change.
+  PER TRACK, what replaced each cookbook: **blender** — contract.md states every measured rule with its
+  number and gate (size tolerance, ground / footprint, the 2 mm contact band and 10 mm interpenetration
+  ERROR, the 5 % island rule, triangle and time budget, export as authored), an "API traps the lint
+  reports" list and a Materials section; four facts re-measured on 5.2.2 (a curve with
+  `bevel_depth = 0` exports no node at all, `primitive_cube_add(scale=…)` without `size=1` doubles every
+  extent, a level-2 subsurfed cube loses 16 % per extent, a hidden boolean cutter stays out of the GLB);
+  the craft went to c3d-blender-forms / c3d-repeats-and-mirrors / c3d-part-contact / c3d-bbox-contract
+  as options; the plan example is an object nobody asks for (`HerbDryingRack`), the articulated one
+  carries its own summary, size and acceptance (it inherited the chair's).  **cadquery** — contract.md
+  "Kernel facts" (workplane normals, `.box` centring, revolve r ≥ 0, the hemisphere trap, OCC
+  refusals) and the measured thresholds; the import list now matches the lint, so `numpy`, `random`
+  and the stdlib data helpers are stated as ALLOWED (a widening of what the prompt permits, not of
+  the sandbox), and the INFO the lint raised on every `.fillet()` / `.chamfer()` is gone (the
+  build's OCC refusal is the signal: uncaught it fails the whole build, which the contract now
+  says; the floating-part ERROR is stated too); the interface example is an abstract Body + Knob
+  × 2 like the other two languages'.  **threejs** — contract.md gains the geometry-axis facts, GLB
+  naming, the export-material facts and a "What is measured" section; the part stub is a plain
+  `BoxGeometry` with no recipe block or preset material.  **urdf_blender** — contract.md states the
+  1 mm FK tolerance, the real limit / axis severities, and the clearance thresholds per pose; the
+  harness's axis fix hint (`articulated_object.axis_fix_hint`, `joints_sweep`) no longer offers
+  "or swap lower/upper".  **glsl_shader** — the recipe seeding is gone (above); contract.md states the
+  frame-gate caps as `frame_stats.py` computes them; c3d-glsl-craft is short practices with no
+  `references/` (telemetry reports its depth as unmeasurable); the skeleton's `src/common.glsl`
+  is a comment and PI / TAU (it seeded hash / noise / fbm / the cosine palette / a gamma tonemap
+  into every workspace — the recipe library in miniature).  **opengl_python** — the 195-line
+  example became a 20-line full-screen pass and a "moderngl facts that decide whether the build runs"
+  list; the skeleton is a stub.  SHARED: `prompts/system/harness_contract.md` (every agent workspace)
+  no longer says "overlap by ≥ 2 mm" (the WARN line), "≥ 15 mm clearance", wall thicknesses, sample
+  heights, "constants on top, one function per part" or a mandated tool order — it states what the
+  gates measure (the floating rule as the gate measures it — the ground-touching component, not
+  "touches another part"; scene bounds as the detailed area, not a cage; the build timeout and,
+  on the static track, the triangle / build-time budget that every object contract now states
+  with the `detail_budget` constants, pinned in `prompts/_claims.toml`); skills route R20 (c3d-threejs-shader-traps on a planned custom shader) is scene-only,
+  since a ShaderMaterial does not survive the static track's GLB export; `examples/graphics_lab`'s
+  recipe studies (`build_recipes.py`, `glsl_cases/`) went with the seeding.  THE RUNNABLE-EXAMPLE
+  RULE: each `contract.md` keeps exactly one example that a test executes through the real runtime
+  and that pins the interface only; the ~12-line fence cap holds everywhere except three executable
+  interface examples the owner should confirm as exemptions — urdf's frame arithmetic (17 xml
+  lines: the origins the wrapper verifies; its python block is 10), opengl_python's full-screen
+  pass (19 lines: a moderngl program cannot be shorter and still build) and D106's two
+  scene_blender modules.  REVIEW PASS (same day, three reviewers): the contact "weld" band
+  (0.5-1.5 mm, "aim ~1 mm") is gone everywhere — flush is contact; the blender skeleton's
+  self-check fails only past the ground gate's ERROR line and the layout text no longer says
+  "glue only"; wrong facts corrected against the code (the wrappers SEED `random` / numpy /
+  `mathutils.noise` and three.js `Math.random`; `mat.blend_method` exists on 5.2.2; the removed
+  APIs the lint does not catch are listed as such; URDF `<axis>` is in the joint frame, world-aligned
+  when every rpy is 0); the snippet collections in c3d-threejs-forms / c3d-blender-forms
+  references became prose under the API names with only their trap lines.
+
+* **D108 A stage that waits must not starve the next one: single-shot calls are bounded by their task,
+  the zone window comes from the hard budget, unwritten zones are recovered (2026-10-15).**  Iteration 2
+  of the argon loop shipped two Blender scenes with three EMPTY zones (0.18 each, both rounds).  The
+  chain, measured: one single-shot asset call streamed 1 087 chunks for ~20 minutes before the retry
+  layer gave up (31 of 2 697 asset calls ran past their 420 s task timeout, all the way to the 1 800 s
+  retry ceiling; p50 96 s, p95 260 s) — `generate_files` bounded the call by the RUN's remaining
+  clock, never by the task's own `timeout_s`; the asset stage took 47-49 min instead of ~4; the zone
+  stage started 0.4 min before the scene track's 0.55 soft cap, so it was neither degraded to
+  single-shot nor given a real window — an agent session clipped to the 180 s floor that read 24-27
+  files and was killed before writing a zone; `zones.done` listed all three as failed and nothing acted;
+  the refine round, whose targets named the three empty zones, spent its 15 minutes on asset files.
+  Fixes: (a) `generation.single_shot_wait_s` — a single-shot call waits at most its task's
+  `timeout_s`, never below `SINGLE_SHOT_MIN_WAIT_S` = 420 s (a stage degraded by a spent soft budget
+  carries the budget's 120-180 s floor, shorter than a legitimate call) and never past the retry
+  ceiling; tasks without a timeout (the object tracks) are unchanged; (b) `scene.zone_window_s` — the
+  zone session's window is `ZONE_TIMEOUT_S` per zone clipped to the HARD budget minus `ROUND0_RESERVE_S`
+  (600 s: assemble, build, render, gates, judge), floor `ZONE_MIN_S` (300 s); the zones are the scene,
+  refine gets what they leave; past the soft cap the stage still degrades to single-shot;
+  (c) `SceneTrack._recover_zones` — every zone the batched session left unwritten gets ONE single-shot
+  generation of its own brief, side by side (`zones.recover` / `zones.recovered` events, a `.recover`
+  label), before assembly; a recovery that fails leaves the stub as before.  Also measured, fixed in the
+  same change: the judge's fog-free Blender views only unlinked the WORLD volume while `lib.sky.haze`
+  builds a volume-only BOX (30/30 and 14/15 envs), so the placement views were rendered through the
+  haze — `render_bpy_scene.hide_fog_boxes` hides volume-only meshes ≥ 8 m in `no_fog` views (soft
+  particles stay; `fog_hidden` in the frame record).  Pinned: `tests/orchestrator_tracks/test_zone_starvation.py`,
+  `tests/scene_runtime/test_render_blender.py::…fog_box…` (real Blender).
+
+* **D110 Objects are baseline-first: ONE session drafts the whole object, ONE session refines it in place per
+  round; agy's argon stays at effort high; a typed `placeholder_part` gate (owner, 2026-10-15).**  Every
+  object language — static_object blender / threejs / cadquery and articulated_object urdf_blender — takes
+  the draft-then-improve shape (the concept from astra3d-brilliana's Blender path, reimplemented; nothing
+  copied): round 0 is `BaseTrack.baseline_tasks`, one agent session that writes every part file and the
+  entry (`generate_static.j2` / `generate_articulated.j2`); the round is built, measured, gated, rendered and
+  judged; every refine round is ONE session over the whole object (`StaticObjectTrack.allow_refine_fanout =
+  False`, articulated inherits it) carrying the gate ERRORs — a placeholder part first of all — then failed
+  must-acceptance items, then the judge's plan (≤ `max_refine_tasks`, compacted to
+  `max_instructions_per_task` lines), with `measurement_vs_plan` kept.  EVIDENCE (argon loop iteration 0,
+  15 runs per language, `--rounds 2 --max-minutes 60`): the scoped baseline (`d104409e`, 2026-08-24, motivated
+  by correlations only — no A/B, no DECISIONS entry) was built for the parallel in-process api-agent and has
+  run SERIALLY since `50734755` / `66175ec1` (the per-workspace session lock, api-agent deleted): 3-5 scope
+  sessions × median 18.2 min + an assemble session against a 58-minute generation window, so blender /
+  threejs reached the end of round 0 at the budget (61.0 min median), 0 of 30 runs finished a refine round,
+  13 and 14 of 15 shipped placeholder or missing parts (33 % / 21 % of part files still the skeleton box)
+  and scored 0.509 / 0.588 mean.  The single-session languages in the same iteration: cadquery judged round
+  0 at 26.8 min, 0.934 median, refine beat it in 13 of 15 runs (picked 0.966); urdf_blender 29.6 min, 0.923
+  → 0.969.  The two blender runs whose scopes all finished scored 0.907 / 0.932.  Session time follows
+  generated tokens (ρ 0.94-0.96, ~72 tok/s); output tokens were 4.3-6.4 × the final files' tokens, and 85 % of
+  the characters blender / threejs sessions wrote went through whole-file writes.  A parallel-sandbox trial (scopes side by side against placeholder
+  neighbours) cut round 0 to 46 min and dropped the dining chair from 0.907 to 0.404 (floating parts) — no
+  parallel work before a real draft exists.  THE DRAFT BRIEF states requirements with their measurements
+  (D106/D107): every planned part at its box and joined before any detail — a session stopped at its window
+  must still leave the whole object (`check_contract` / `check_connectivity` measure it); each skeleton file
+  replaced in one write and then changed only with targeted edits.  The refine brief (`refine_object.j2`)
+  says edit in place, never rewrite a whole file to change a few lines.  The measurement the briefs cite is
+  the chair pair (iteration 0's dining chair rewrote files whole — 8 rewrites over 9 files, ~136k characters
+  written; the baseline-first smoke's chair wrote each file once, ~49k), not the 4.3-6.4 × ratio: the smoke's
+  rewrite-free draft still generated ~4.2 × its final code in output tokens, so that ratio is not a rewrite
+  cost.  No agent refine is fenced to a part subset; a SINGLE-SHOT refine still is (`edit_only`, the
+  `edit_only_these` branch kept for it alone) — it sees only the files inlined for it and could otherwise
+  rewrite one it was never shown (review 2026-10-15).  REFINE WINDOW: an object refine session gets
+  `static_object.object_session_window_s` — the agent default clipped to end `OBJECT_ROUND_RESERVE_S` (180 s;
+  build + gates + renders + judge measured 0.7 min) plus the watchdog's `HARD_GRACE_S` before the run's hard
+  ceiling.  Without it a busy session ran to the run clock: the smoke's blender refine (started at 25.8 of
+  60 min, 30-min window + 5-min grace) was killed at 60.0 min after $4.63 and the round dropped unbuilt and
+  unjudged, as were all three refines of iteration 0's chair.  PLACEHOLDER GATE:
+  `check_contract` emits an ERROR `data.kind = "placeholder_part"` (`contracts.artifacts.PLACEHOLDER_PART`)
+  when `spatial.contract.is_placeholder` holds — every measured row of the part ≤ 12 triangles
+  (`PLACEHOLDER_MAX_TRIS`, what blender / urdf `primitive_cube_add`, three.js `BoxGeometry` and cadquery
+  `Workplane.box` export), watertight with a volume ≥ 0.999 of its own box (`PLACEHOLDER_MIN_FILL` — a real
+  12-triangle hexahedron does not fill it: review 2026-10-15 found a tapered cadquery fretboard at its plan box,
+  fill 0.879, flagged; over 942 loop part rows the 68 true placeholders were all watertight at fill 1.000) and
+  its extents within 1 mm (`PLACEHOLDER_TOL_M`) of the plan box, a single
+  instance also at the plan centre (copies are placed by the symmetry hint, so only their size is compared);
+  0 triangles (not measured) never fires.  KNOWN LIMIT, pinned: a real bare 12-triangle box built to the
+  plan's millimetre fires too — measurement cannot tell it from the skeleton's, and the corpus held none
+  (every hit was a part file byte-identical to the `skeleton` commit); keying on that git fact instead was
+  not taken, the gate sees only the measurement.  Computed from `Measurement.parts`, no grep of names or sources
+  (Law 4); the box checks for that part are skipped (it would pass them by construction).
+  `orchestrator.build_refine_instructions` sorts it ahead of every other gate ERROR.  CONSEQUENCE, a known
+  change: a contract ERROR fires the `contract_violation` cap (0.75), so a run that ships placeholder parts
+  now scores ≤ 0.75 where the gates used to call those parts perfect.  EFFORT (owner, 2026-10-15, final:
+  "argon 强度就直接设置high"): agy with gemini-4-argon runs at `--effort high` on every track — no default
+  was lowered.  Plumbing only: `AgentJob.effort: AgentEffort | None` is filled from
+  `GenerationTask.thinking` by `tracks.generation.session_effort` ONLY when a caller explicitly asks
+  (`thinking` is now `Literal["", "off", "low", "medium", "high"]`, default "" = nobody asked; a single-shot
+  call then thinks at `SINGLE_SHOT_THINKING` = medium, unchanged); agy's precedence is the id's
+  `-low/-medium/-high` suffix, then `job.effort`, then `AGY_API_EFFORT` = high.  The misleading
+  `thinking="medium"` on the object draft / refine, the graphics refine and the first repair attempt —
+  which agy never honoured — are removed, so code and behaviour agree; the rebuild / later repair tasks ask
+  for "high", which is agy's default anyway.  No caller asks for less than high today.  The effort used is on
+  the session's `invoke` transcript line, in `result.json` (`AgentResult.effort`) and on its `cost.jsonl`
+  row (`effort`).  claude-code takes `--effort` from `Settings.agents.claude_effort` (default xhigh) and
+  codex `-c model_reasoning_effort=` from `codex_reasoning_effort` / an `@<effort>` id (default high); both
+  ignore `job.effort` (behaviour unchanged) and now record what they passed.  RECORDED MEASUREMENT, NOT
+  ACTED ON: the graphics loop's iteration 1 ran agy at medium (`agy:gemini-4-argon-medium`,
+  `eval/bench/out/loop_argon_graphics/iter_01`) against iteration 0 at high: glsl_shader (n = 9) picked
+  0.837 → 0.909, minutes 55.7 → 48.3, $40.50 → $37.51; opengl_python (n = 5) 0.932 → 0.939, 59.6 → 45.6
+  min, $22.55 → $18.17 — unpaired, n ≤ 9, inside judge noise on opengl; argon stays at high.  DELETED (a
+  deletion, not a move): `StaticObjectTrack.baseline_tasks` / `scopes` / `scoped_baseline_tasks` /
+  `scope_system_prompt` / `part_template` / `assemble_template`; `tracks/depth.py` `PartScope`,
+  `scope_groups`, `_files_for`, `_attachment_units`, `_pack`, `interfaces_text`, `scoped_generation_enabled`,
+  `MIN_PARTS_FOR_SCOPED`; `prompting.scope_context`, `parts_table_for`, `part_details_for`;
+  `prompts/tracks/generate_static_part.j2`, `assemble_static.j2`, `system/role_scope.j2`;
+  `Settings.scoped_parts` (`C3D_SCOPED_PARTS` is now a dead key an A/B rig refuses, `plan_features`);
+  `GenerationTask.phase` and the phase loop in `steps.run_generation_tasks` (its one user); the
+  `generate.scoped` event; the scoped tests (`test_generation_depth.py`).  Kept exactly: the planner, part
+  naming and one-file-per-part layout, the skeleton, the contract and connectivity gates, `detail_budget`,
+  the picker.  Pinned: `tests/orchestrator_tracks/test_baseline_first.py` (one draft task owning every file,
+  one refine task with the placeholder ERROR first, the single-shot fence, the refine window, articulated
+  end to end with fakes),
+  `tests/spatial_tools/test_placeholder_gate.py` (the rule; each language's REAL skeleton fires and a rebuilt
+  part does not: blender, cadquery, threejs; a tapered cadquery extrude at its plan box does not; a bare box
+  exactly at it does), `tests/agents/test_antigravity.py::test_effort_reaches…` /
+  `…object_and_scene_tasks_run_argon_at_high`, `tests/agents/test_agent_job_wiring.py`.
+
+* **D111 Stage honesty and measured scenery: the env stage counts only its own file, placement rows come
+  from the plan's zone roots, a probe timeout is the code's (2026-10-16).**  Evidence: argon loop iteration 4,
+  scene_threejs (`eval/bench/out/loop_argon/iter_04/scene_threejs`, 15 runs, read-only investigation of
+  r1_01 / r1_02 / r1_08 / r1_10).  (1) The env session wrote `src/env.js` in 3 of 15 runs; in the other 12 it
+  read for 7-10 min, was killed idle, and was credited with the `src/assets/*` files the asset single-shots
+  wrote beside it (whole-tree diff, `attribute_changes`), so `stages/env.json` read `ok:true`; the same asset
+  writes kept its idle clock alive (the 12 ended at 421-616 s on a 420 s window; the 3 that wrote ran into the 720 s hard cap).  Round 0 was unlit (dark_frame,
+  no_fog, no_background; round-0 mean 0.394) and the single refine round wrote the whole environment from the
+  skeleton; in r1_01 a zone author built a replacement world inside its zone file.  (2) `host_placement.
+  collectAssets` made every direct child of every top-level root a placed asset, so a wall merged per material
+  became overlapping body / flashing rows and a two-mesh bollard a cap "interpenetrating" its post.  Replayed
+  with the stored scenes (probe unmarked vs marked): 9 / 10 / 3 / 15 placement ERRORs on roots outside the plan's
+  zones in r1_01 / r1_02 / r1_03 / r1_10, and r1_02's and r1_10's final ERRORs were all of that kind.  r1_01 is
+  mixed: its final round's 10 ERRORs were 5 real clips of the zone asset `BakeryStoop/BakeryStorefrontFacade`
+  into `AlleyFallbackEnvelope` (337 meshes that a ZONE added straight to the scene, `scene.add`, not the env),
+  the `zone_empty` the envelope caused by filling the 400-row table before `ScooterParkingNook`, and scenery
+  pairs.  (3) r1_08's refine terrain made the zones' per-vertex raycast
+  seating exceed the 120 s probe; the probe said "harness/driver failure, not your code", and the round spent
+  3 x 240 s rebuilding identical code and was never scored.  (4) `build_refine_instructions` deduplicated on
+  (target, `gate:<gate>`), so `no_fog` hid `no_background`.  CHANGED: `AgentJob` / `GenerationTask`
+  `shared_tree` (typed; needs a `files_hint`, excludes `edit_only`): such a session's `files_changed` is its
+  `files_hint` only (`cli_common.attribute_changes(only=)`, also `generation._attributed_fallback`) and the
+  watchdog polls only those files (`cli_common.activity_paths`; `_latest_mtime` takes a file).  The scene env
+  task sets it; `SceneTrack._env_stage` is ok only when `env_file(ctx)` is in `files_changed` or rewritten
+  since the stage began (`_touched`, the zone stage's test) and otherwise runs ONE single-shot
+  `_recover_env` before the zones (events `env.recover` / `env.recovered`; the env window the budget still
+  allows) — both scene languages, through `env_file`.  Plain sessions keep the whole diff: a refine that also
+  fixed a file outside its hint must not turn into `ok=False` and a RoundFailed.  The assembler marks every
+  zone root `userData[conventions.ZONE_ROOT_KEY]` (`render_scene_js` `addZone`, the assembler's own probe), the
+  scene_blender census GLB writes the same key into each zone node's `extras` (`--zone-key` argv →
+  `_census_glb.write_census_glb(zone_key=)`; GLTFLoader turns it into `userData`); `host_placement` measures
+  only the children of marked roots as rows — every other root is scenery: no rows, not in the free share, never
+  paired with other scenery, listed in the table's `scenery` {n, names} and the summary.  Its children are still
+  measured as SCENERY PIECES (`measurePiece`, the zone assets' own exemptions: a ground / water / enclosing piece
+  is a backdrop): a support and something to sink into, something a zone asset is mounted on (`attached`, so
+  neither the gate nor the boot settle calls a sconce on an env facade floating) and something a zone asset can
+  clip (a zone-vs-scenery interpenetration names the zone asset `a`, the one its author can move — r1_01's five
+  storefront clips stay measured).  A scene with no mark at all (one the harness did not assemble) keeps the old
+  rule.  A table cut by its ROW CAP (`total` > rows; a time-budget cut still writes a row per asset) gives an INFO
+  `zone_unmeasured` instead of `zone_empty` for a zone whose census group is built (`content` / `ground`, not
+  `empty`), and instead of `missing_content` for the zone at the cut (the last row's).  The `missing_content`
+  hint says where a row comes from: a direct child of the zone's group (scene_blender: a root object linked into
+  the zone's collection).  A probe timeout is typed: `SceneRenderError.timed_out` + `phase`, the phase
+  `probe_scene.mjs`'s watchdog reports (`armWatchdog`'s `onFire` returns it; `host_page.openHost(onBoot=)` marks
+  the import); `run_scene_script` retries a watchdog timeout once on a browser of its own (a wedged shared browser
+  times out the same way), and only `SceneRenderError.scene_timed_out` — the phase is `scene` (import,
+  createScene, the boot settle), `census` or `update` (`render_scene.SCENE_PHASES`) — makes `probes.run_probe`
+  file an ERROR `probe_timeout` on the entry file with no "not your code" hint, so `build_with_repair` sends it to
+  a repair session instead of `MAX_HARNESS_REBUILDS` rebuilds.  The box keeps every other timeout: `host`
+  (browser launch, page ready), `report`, `compile` (the shader preflight), `close`, the process clock (node
+  itself starved) — and every census-GLB boot (scene_blender: Blender already ran the author's code; the GLB is
+  the harness's export).  The `scene_probe` tool probes under the build's budget (`probe(timeout_s=None)`; it was
+  60 s against the build's 120 s, so a timeout now the code's would have condemned a scene the build accepts).
+  The refine dedup key carries the finding's `data["kind"]`.  BEHAVIOUR that changes with the mark: env scenery
+  is no longer moved by the boot settle — it renders as authored (r1_03 replay: the settle had lifted the env's
+  `PerimeterPromenadeDecks` 1.42 m, and the zone's landing deck now clips it, a new zone-vs-scenery finding); a
+  floating env prop is no longer measured at all; planned content a zone adds with `scene.add` is not that zone's
+  (`missing_content`).  Accepted, not fixed: a pre-D111 three.js run resumed or replayed keeps its unmarked
+  `scene.js` (the assemble stage is keyed on the plan) and is measured by the old rule WITHOUT the RoomShell
+  exemption (Law 4: no name rule comes back for old runs); an env session writes nothing to its own file
+  inside its 420 s window → the same idle kill every agy session gets (agy prints nothing until it exits, so
+  its only activity is its own writes), then `_recover_env`; an env session that COMPLETES without writing gets
+  the generic silent-bail rerun before `_recover_env`, as the zones stage does (0 of 15 in iteration 4: all
+  ended `timeout`).  DELETED: the `RoomShell…` name-prefix enclosure exemption in `host_placement`
+  (D105 follow-up of 2026-10-15) — a room shell is a scenery root of a marked scene.  NOT changed: no prompt
+  text, no template, no default env (requirement-only prompts untouched; argon effort stays high); the idle
+  watchdog for read-only refine sessions; `probeColumn`'s ground-like burial rule (no zone-asset repro).
+  `tests/prompts/manifest.json` re-blessed for the job `scope` payloads only (the new `shared_tree` field in
+  every `AgentJob` dump, true on the scene env jobs) — no prompt, system, context or judge payload changed.
+  Model-visible outside the manifest: the assembled `src/scene.js` (a file refine sessions read) gains the one
+  harness-owned mark line per zone, and the `missing_content` / `probe_timeout` finding texts.
+  Measure next: env-stage write rate (3/15 → ≥ 13/15 from `git log -- src/env.js`), round-0 mean, share of
+  round-1 diffs that are 300+-line env rewrites, `build.harness_retry` events, placement ERRORs on non-zone
+  roots (0).  Pinned: `tests/agents/test_shared_tree.py`, `tests/orchestrator_tracks/test_env_stage_honest.py`,
+  `tests/scene_runtime/test_zone_roots.py` (env parapet merged by material + two-mesh bollards + room shell →
+  no rows, the zone's sunken / interpenetration findings identical to a zone-only scene; sconces and a sign flush
+  on an env facade attached and left by the settle, a kiosk pushed into it an interpenetration on the kiosk; the
+  unmarked control),
+  `tests/scene_blender/test_build.py::test_the_zone_mark_survives_the_census_glb`,
+  `tests/scene_runtime/test_probe_timeout.py` (phases; the owned-browser retry; the process clock; the census
+  GLB; one budget for the tool and the build; a real driver whose createScene blocks reports `phase: scene`),
+  `tests/orchestrator_tracks/test_orchestrator.py::test_two_env_errors_of_one_gate_are_two_refine_tasks`,
+  `tests/scene_gates/test_placement.py::test_a_zone_past_a_truncated_tables_cut_is_unmeasured_not_empty` /
+  `::test_the_zone_at_a_truncated_tables_cut_is_partly_measured`.
+
+* **D112 A session that takes steps is never idle-killed; the env recovery is checked; the clock leaves room to
+  judge (2026-10-16).**  Evidence: argon loop iteration 5, both scene languages (the first iteration on D111;
+  `eval/bench/out/loop_argon/iter_05/{scene_threejs,scene_blender}`, read-only investigation of 26 env stages and
+  r1_07 / r1_08 / r1_09 threejs, r1_10 blender).  Round 0 rose (threejs mean 0.325 → 0.623, blender 0.584 → 0.675)
+  only because D111's honest env stage handed the env to `_recover_env`; what was left lost on seven defects:
+  (S1) agy prints nothing until it exits and D111 watched a `shared_tree` session's own file only, so a session
+  READING was idle from second 0 and its soft window was a hard kill — 22 of 26 env sessions died at 420-423 s
+  with nothing written (every iteration-4 session that lived ≥ 646 s wrote: 13 / 13), 4 of 21 refines at 901 s;
+  (S2) `_recover_env` was `ok` when the file was touched: 5 of 21 recovered modules failed the assembly probe
+  (blender r1_02's `SyntaxError` at `curb_ mats = …`, `materials.js does not export 'gravel'`, `pavingPatch is not
+  defined`, `mineral_surface() got an unexpected keyword argument 'roughness'`, a `list` with no `.name`), and the
+  two that never reached assembly were broken too (blender r1_10's `noise_ centered = …` did not parse, r1_04's
+  passed a tuple rotation — a `TypeError`): S4 had put the placeholder back in both, which is why those two
+  rounds 0 showed no sky;
+  (S3) `is_interior` was `bool(flag) or infer_indoor(text)`, so `interior: False` lost to the word list
+  (`GiantTrunkCorridor` → "corridor", "luminance inside 0.42-0.62" → "inside"): 6 of 26 outdoor plans measured at
+  the 2 cm indoor tolerance — r1_07's three 4-5 cm boulder gaps became floating ERRORs and a 0.60 cap; (S4) in
+  two blender runs an escalated asset session held the workspace while `env.recover` committed — r1_10's burlap
+  session (+391 lines, `24282df`) and r1_04's woven olive basket (+482, `a336df6`) — and its scope check restored
+  `src/env.py` to its own `head_before` (the 49-line placeholder); (S7) the placeholder's
+  "no lamps and no world" was a WARN, so round 0 built, the repair fixed an asset, and every frame was 96-99 %
+  black (0.109); (S6) the harness's own `lib/sky.js` set `scene.background = null` and its own gate raised
+  `no_background` (threejs r1_03 / r1_09 / r1_10 — the first refine target each time); (S5) a watchdog kill was
+  transient whenever agy's log held any provider retry — the same 901 s / zero-file kill was retried in r1_05 /
+  r1_09 (one 4 s 503) and ended r1_07 / r1_08 as no_change; and r1_09's transport retry, launched with 15 min left
+  and cut at the budget edge, committed the camera fix that capped the run and was never built or judged.
+  CHANGED, in the investigation's order:
+  (1) `cli_common.activity_paths(s, steps)` / `invoke(..., activity=)`: what the CLI records per step is activity;
+  `AntigravityAgent.run` passes its session HOME's `AGY_STEP_DIRS` (`.gemini/antigravity-cli/brain`,
+  `…/conversations` — by name: the watchdog's walk skips `.gemini`; the presence lock / updater / caches are
+  start-up writes, not steps) for EVERY agy session, `shared_tree` or not.  A session that takes steps now runs to
+  its hard limit (window + `HARD_GRACE_S` 300 s, still min'd with the run's deadline); one that records nothing for
+  `IDLE_GRACE_S` past its window is still killed there.  Object / articulated / graphics agy sessions: the same —
+  a reading refine was killed at its window (when nothing under `src/` / `public/` moved), now it may use the
+  grace; every hard limit is unchanged (`timeout_s + HARD_GRACE_S`, the job's `hard_deadline_s`, agy's own
+  `--print-timeout` a minute past it), so the worst case per session is the one it always had.  `SCAN_S` (the
+  mtime poll, 5 s) is now a module constant tests turn down.  (2) `scene_placement.is_interior`: a bool flag —
+  `ScenePlan.interior` or a dict's `interior` — wins either way; the words only when it is absent / None.  (3)
+  `SceneRuntime.check_env(ws) -> str` (new, both languages): the env module alone — its own lint findings
+  (scene_threejs: `lint` filtered to `src/env.js`, which includes the import-vs-export check; scene_blender:
+  `lint_scene_source(role="env")`), then a build with nothing beside it (`probe_scene.mjs` on a deleted-after-use
+  `src/_c3v_env_probe.js`; `run_wrapper(entry=src/_c3d_env_check.py, zones={})`), then `probes.unlit`; a check the
+  harness cannot run is `""`.  `SceneRuntime.lib_interface(ws) -> str` (new): every `src/lib` module's exported
+  names with their parameter lists as written (`_js_lint.export_signatures`; `ast` for bpy) — 6.9 k / 12.2 k chars,
+  facts, no call examples.  `SceneTrack._recover_env`: single-shot → `check_env` → on failure ONE repair
+  single-shot (`env.recover.repair`) whose prompt carries the check's words and the file as written; both carry
+  the lib interface (`scene_env*.j2` blocks rendered only when the recovery passes them — the session's prompt is
+  unchanged); a module still failing is replaced by what it overwrote (zones import the env's interface; a broken
+  env breaks every one) and the stage reports failed; `env.checked` events.  (4) S4: `_recover_env` runs inside
+  `cli_common.exclusive_workspace(ws)` — the session lock.  Chosen over "restore out-of-scope paths to HEAD":
+  every commit is `git add -A`, so a harness commit inside a session's window also absorbs that session's
+  in-flight writes, and restoring to HEAD would keep exactly the out-of-scope writes the revert exists to undo,
+  on every track; with the lock no harness commit lands inside a window and `head_before` stays the whole truth
+  (cost: an escalated asset session and the recovery wait for each other — they were serialised against the env
+  session anyway).  S7: `probes.unlit` — no lamp and no world (bpy), or no light, no `scene.background` and no
+  `scene.environment` (three.js: the analogue; a sky with no light keeps its WARN) — is an ERROR `unlit` on the
+  env file: the build fails and the round's repair is handed the env before anything is rendered or judged (so the bare skeleton's build now fails on exactly that one ERROR — by design; a test fixture scene that lit nothing got a background).
+  (5) S6: `makeSky` keeps a `scene.background` the caller set and gives an unset one the dome's own graded
+  horizon colour (`skyRadiance` on the side away from the sun) — the gate is unchanged (it is right: an unset
+  background renders the raw clear colour wherever the dome does not cover); `celestial.js`, the
+  `effects_catalog.md` row and the `c3d-scene-atmosphere` skill say so.  (6) A floating row states its gap to the
+  millimetre, the tolerance applied (`indoor/outdoor tolerance 0.0N m`) and why it is an ERROR (`past 0.08 m` /
+  `N rows float, more than 2`); an unsupported row its gap and "within the … tolerance" — so the refine prompt's
+  task lines (`GateFinding.as_line`) carry them; both refine templates state that `artifacts/scene_probe.json` is
+  the probe driver's raw dump and `check_placement` returns the rows.  (7) `RoundPolicy.judge_reserve_s` (240 s:
+  201 s measured in r1_09) and `min_session_s` (180 s); `RoundPolicy.can_open(budget)` gates every refine round,
+  a refine round's transport / stall retry (`round.skipped_budget` → BUDGET) and the scene stage retry — round 0's
+  retry is not gated (it has no round to fall back on); refine / rebuild tasks
+  carry `GenerationTask.reserve_s` (their session's hard deadline ends that much before the budget);
+  `BaseTrack._salvage` (was `_salvage_baseline`) also salvages a refine round: a budget stop after its sessions
+  changed `src/` / `public/` since the last round's commit gets the same ONE bounded grace (max(5 min, 15 %)) and a
+  no-generation round that builds, gates, renders and judges those edits.  The object tracks' own
+  `OBJECT_ROUND_RESERVE_S` (180 s) is deleted: `object_session_window_s` uses `judge_reserve_s` (one reserve) —
+  an object refine window now ends 60 s earlier, and no object refine round launches with < 7 min left.
+  (8) `classify_end` has no `provider_retried`: a watchdog kill is never `transient` (the key is not cooled); it is
+  `stalled` (`SessionEnd` / `AgentResult` / `GenerationResult` / `RoundFailed.stalled`) when the watchdog found it
+  IDLE and it answered nothing, and a stalled round / stage session gets the transport retry's ONE more session
+  when `can_open` holds; a kill at the hard limit (worked its window, wrote nothing) is not retried.  eval's
+  one-shot drops a stalled cell as infra (`_oneshot.py`, beside transient / quota).  NOT changed: argon effort
+  (high everywhere); `ENV_TIMEOUT_S` / `REFINE_TIMEOUT_S` (the investigation: widening a window buys nothing
+  until the first write); the session-written env is not run through `check_env` (1 of 17 failed in iteration 4);
+  the `run_state.json` control-file revert during `shared_tree` sessions (19 of 25 env sessions; no score effect
+  measured); deferred, single cases: an establishing-camera FOV check at plan time (r1_09 content_small) and a
+  ground-mesh-vs-`height_at` env check (blender r1_10 round 1).  Known, not fixed: an asset single-shot rewriting
+  its skeleton stub while ANOTHER asset's escalated (edit_only) session runs is outside that session's files and is
+  reverted by its scope check — the same lock-free-writer class as S4, which the single-shots (minutes of model
+  call, many in parallel) cannot take the session lock for without serialising the asset stage.  Model-visible:
+  `tests/prompts/manifest.json` re-blessed for the refine templates' scene_probe.json / check_placement sentence (13
+  refine prompts) and the `makeSky` catalog row (12 prompts); outside the manifest: the recovery prompts' lib
+  interface and check blocks, the placement finding texts, the `unlit` finding, the atmosphere skill sentence.
+  Measure next (iteration 6): env files written by the session (4/26 → ≥ 20/26), recovered envs failing assembly
+  (5 → ≤ 1), round-0 lighting mean (0.71 → ≥ 0.82), zero-file refines (4/21 → ≤ 1), no_change stops (5 → ≤ 2),
+  `thresholds.indoor == plan.interior` (100 %), round-0 dark_frame from an unlit census (0), `no_background` on
+  `makeSky` scenes (0), refine calls before the first write (median 23-30 today), `budget.salvage` rounds judged.
+  Pinned: `tests/agents/test_agy_activity.py` (a fake agy recording steps under its HOME survives past its window
+  to the hard limit, shared_tree and not; one recording nothing dies at the window; a hang ends the same with or
+  without a logged 503), `tests/scene_gates/test_placement.py::test_an_outdoor_flag_is_not_overruled_by_indoor_sounding_words`
+  / `::test_a_floating_row_states_its_gap_to_the_millimetre_and_the_tolerance_applied`,
+  `tests/orchestrator_tracks/test_env_stage_honest.py` (check + one repair with the error and the lib index; twice
+  failed → placeholder back; the recovery waits for a session holding the workspace),
+  `tests/scene_runtime/test_env_check.py` / `tests/scene_blender/test_env_check.py` (real Chrome / Blender:
+  a missing export, a ReferenceError, a SyntaxError, a NameError, unlit), `tests/scene_blender/test_layout.py::
+  test_an_unlit_scene_fails_the_build_in_both_languages`, `tests/scene_runtime/lib/test_environment.py::
+  test_the_sky_dome_keeps_or_sets_the_background_the_gate_reads`, `tests/orchestrator_tracks/test_refine_evidence.py`,
+  `tests/orchestrator_tracks/test_transport_retry.py` (a hung refine retried once; a hard-limit kill not; no refine
+  launched under the reserve; the refine deadline leaves the reserve; stopped refine edits judged; nothing to
+  salvage when nothing changed).
+  Review fixes (two reviews of the change, same day): (a) the `unlit` ERROR failed EVERY build while the env was
+  the placeholder, mid-session too — an escalated asset session beside the env stage, a zone session after a
+  failed env stage — and those sessions cannot write the env module (their scope check reverts it); the round's
+  build still fails on it (its repair gets the env), but the MCP `build` tool reports an unlit-only failure as a
+  `SCENE UNLIT — …` line above BUILD OK (`spatial.tools._env_unlit_only`; any other ERROR beside it is still BUILD
+  FAILED); (b) `run_best_of_n`'s every-candidate-failed `RoundFailed` dropped `stalled` (a hung `--candidates 2`
+  round 0 failed the run where one candidate got the retry) — carried now; (c) `RoundFailed.of` sets `stalled` only
+  when EVERY result hung or died of transport: the loop retries a round whole, and a sibling that worked to its
+  hard limit is not to be re-run; (d) `RoundPolicy.can_open(budget, *, single_shot=)` / `need_s`: a single-shot
+  generation (the economy profile) needs the judge reserve only, not the agent session minimum (it would have
+  stopped as BUDGET with 4-7 min left for a one-minute call); (e) bpy `check_env` quoted the innermost `src/`
+  frame — `src/lib/mesh.py:69` for r1_04, a file the repair single-shot never sees — and now leads with the env's
+  own calling line from the traceback (`scene_blender.env_frame`: "src/env.py:287 `sky_batch.box(` (raised in
+  src/lib/mesh.py:69)"); (f) `_js_lint.export_signatures` listed `export const asphalt = (o = {}) => …` as a bare
+  name (25 of 208 lib exports, all 18 material factories) — a const bound to an arrow / function expression is
+  listed with its parameters (7 bare names left, all constants); (g) eval: `stalled` is infra wherever `transient`
+  was (`_infra._looks_infra` — a harness run whose round 0 hung twice; compare_backends' bare arm with no file;
+  `_bare_agent` does not cache a hung session as done), as the one-shot already did — before D112 the same hang
+  was transient whenever the CLI had logged a provider retry.  Pinned:
+  `tests/orchestrator_tracks/test_transport_retry.py::test_a_split_round_is_stalled_only_when_every_session_hung` /
+  `::test_hung_best_of_n_candidates_get_the_round_loops_retry` / `::test_a_single_shot_refine_needs_only_the_judge_reserve`,
+  `tests/spatial_tools/test_tools.py::test_a_session_build_reports_an_unlit_env_above_build_ok`,
+  `tests/scene_blender/test_env_check.py::test_check_env_leads_with_the_env_line_when_a_lib_helper_raised`,
+  `tests/scene_runtime/test_env_check.py::test_an_arrow_function_export_is_listed_with_its_parameters`, eval's
+  `test_infra_failures.py::test_a_hung_*` and `test_bare_agent.py::test_a_hung_session_is_not_cached_so_a_redo_runs_it`.
+
+* **D113 Raw mode for scene_blender: an opt-in run where no harness library ships and the model writes every
+  line of bpy — the `argon_raw` variant (2026-10-17).**  WHY: the owner's game-world demo must have ALL scene
+  modeling code written by `agy:gemini-4-argon`; every scene_blender workspace shipped the ~3 000-line harness bpy
+  library (`src/lib/*.py`: `vegetation.tree`, `architecture.timber_house`, `terrain.boulder`, `figure`, the material
+  recipes, the sky worlds …), so part of every scene's geometry was harness code.  WHAT: `Settings.scene_lib`
+  (`C3D_SCENE_LIB`, default **on** — every existing run and the manifest's base and `argon` payloads are
+  byte-identical) and, OFF, raw mode: (1) `write_skeleton(..., lib=False)` writes no `src/lib/`, and the env /
+  asset / zone stubs are raw bpy / bmesh that import and name nothing of it (the env placeholder still builds ONE
+  level plate named Ground and nothing else); the plan-less example is refused (`ValueError`: it is built on the
+  library); (2) the lint drops `lib` from the workspace packages — an import of it is a `bad_import` ERROR saying
+  no library ships, shared code goes in `src/env.py` (zones `from env import`; an asset module is self-contained:
+  its check builds it without `env`); a write under `src/lib/` is still reverted (`HARNESS_OWNED_SRC`);
+  (3) ONE decision, per run: `prompts.variants.run_knob("scene_lib", settings)` — a stated value wins; inside a run
+  (the `activate` ContextVar, per thread and copied into fan-out) the ACTIVE variant's `[knobs]` value, else the
+  default; outside any run the settings object as it stands.  `SceneBlenderRuntime.ships_lib` asks it at CALL time
+  (`lib_interface` → `""`), `scene_assets.ships_lib(ctx)` asks the run's real runtime (a stand-in runtime: the
+  same rule over `ctx.settings`) and gates the catalog rows (`library_rows` → `""`) and the asset API's placing
+  line (a collection-instance Empty, not `lib.scatter.instance`), and the two placement hints that named
+  `lib.place.seat` say what it does (`scene_placement.RAW_BPY_WORDS`); the skeleton stage's cache key carries
+  `scene_lib: False` in raw mode only (a pre-round resume that changed the mode rewrites the skeleton, and a raw
+  skeleton removes a library one's `src/lib/`; library-mode keys are unchanged); (4) `scene_lib` is a variant knob
+  (`prompts/variants.KNOB_FIELDS`, bool) of a new kind, `RUN_KNOBS`: `knobs_applied` reports it but never writes it
+  onto a shared `Settings` — the bench runs `--parallel N` runs as threads of ONE process sharing the singleton, and
+  a written knob, put back by whichever run ended first, flipped its siblings between raw and library mode mid-run
+  (the review's two-thread race; `skills_max` / `skills_only` keep the old write-and-restore) — and it is applied
+  by the MCP server at start (`mcp_server.apply_run_knobs`: the spec's frozen variant,
+  else the process switch by the spec's generator), because the server is its own process and its `build` lint
+  would otherwise pass a `lib` import the round's lint fails; (5) the variant `argon_raw` (v1, generators
+  `agy:gemini-4-argon`, `[knobs] scene_lib = false`) shadows, for scene_blender, `scene_blender/{system,contract,
+  asset,effects_catalog}.md`, `tracks/scene_{env,zone,asset,refine}_bpy.j2`, `tracks/plan_scene_bpy.j2` and
+  `system/harness_contract.md` with copies that replace every library reference by what the gate measures and the
+  raw bpy that meets it (seating from the root's lowest world-space vertices, boxes kept apart, soft particles as
+  volume-only materials, motion on the slotted action's channelbag f-curves or simple `frame` drivers), plus the
+  owner's realism REQUIREMENTS stated as what is judged / measured (multi-scale procedural surfaces, organic
+  silhouettes, a world that continues past the content); the contract keeps ONE executable example per module
+  type (env + one zone) in raw bpy / bmesh; the effects catalog is a statement that no library ships plus the
+  generic Blender 5.2 / renderer facts; the skills overlay shadows `c3d-bpy-scene-{placement,lighting,materials}`
+  with lib-free copies that keep every claimed sentence (their `_claims` are the base's), `routes.toml` with no
+  rows.  HOW: `3dcode make "..." --track scene --language scene_blender --variant argon_raw` (or
+  `C3D_VARIANT=argon_raw`; `C3D_SCENE_LIB=0` alone gives raw mode under the BASE prompts, which still describe the
+  library — not a supported combination).  Model-visible: a new manifest scenario
+  `scene.scene_blender.agent.variant_argon_raw` (43 payloads, blessed); no existing payload moved.  Pinned:
+  `tests/scene_blender/test_raw_mode.py` (raw skeleton, refused example, the knob at call time, two overlapping
+  runs in threads keeping their own mode, the real runtime deciding for the track and the skeleton key, the lint in both
+  modes, the knob's typing and precedence, no overlay file names the library, every overlaid template renders
+  with the scene track's context, the whole run offline, the MCP server applying the run's knobs, and in Blender
+  the raw placeholder env + an empty zone),
+  `tests/prompts/test_snippets_run.py::test_the_argon_raw_contract_examples_build_through_the_runtime_in_raw_mode`,
+  `tests/core/test_doctor.py::test_doctor_skills_reports_every_shipped_overlay` (two shipped variants, one row each).
+
+* **D114 A NaN in the model's bpy scene is the MODEL's build error; a `.blend` keeps the images made in memory
+  (2026-10-17).**  WHY: (1) a live scene_blender run (`world_demo/scenes_v1`, `w6_sky_island_ruins` round 2):
+  `src/assets/mossy_arch.py` left NaN vertices (`MossyArchStone_v0`, ~455 of 3 900 evaluated), the zone
+  (`middle_cascade_zone.py`) placed its arches at a `z` computed from those vertices — NaN locations; rebuilt
+  from the round's commit, the old writer put the NaN into the GLB's JSON (accessor `min`/`max`, and
+  `"matrix":[NaN,…]` from the placement), the probe host's
+  `JSON.parse` failed, `offline_report` marks any host load failure `harness_failure`, so `build_with_repair`
+  re-ran the identical build twice (`build.harness_retry` ×2) and gave up — the model never got a repair task
+  naming the object and the round scored None (~$2.8, 20 min).  The static and URDF paths had the quieter twin:
+  the official glTF exporter DROPS a NaN translation (the part exports at the origin, measured on 5.2.2) and
+  writes NaN vertices into the buffer.  (2) `run_bpy.py --blend` and `run_bpy_scene.py`'s `scene.blend` were saved
+  with `save_as_mainfile(copy=True)` and nothing packed: an image the script made in memory (`images.new` +
+  `pixels`; a character's 32 generated textures) reopens as a blank generated image — black.  `scene.blend` is
+  what `render_bpy_scene.py` opens for EVERY judged frame, so on scene_blender this was a judged-frames bug: any
+  procedural texture baked through `pixels` was judged black, while the census GLB (no images) and the gates
+  never saw it.  WHAT: (1) `wrappers/_finite.py` (numpy + duck-typed bpy, unit-testable): `own_channels`
+  (location / the rotation channel the object's `rotation_mode` uses / scale / the deltas /
+  `matrix_parent_inverse`), `transform_culprit` (walks up the parent chain: the Empty whose rotation is NaN is
+  named, "makes 'Arch' non-finite"; nothing on the way → `matrix_world`, a constraint or driver), `Offenders`
+  (one row per object × kind — transform / vertices / instances of a scatter cloud — with the FILE that built the
+  object) whose `report()` is the build error: `error_type` `NonFiniteTransform` (`NonFiniteGeometry` when only
+  vertices), a message naming each object, its file and channel values plus the usual causes, `error_file` the
+  first known file, the rows under `nonfinite`.  `_census_glb` checks every node matrix, every mesh's vertices
+  and every cloud's instance matrices as it goes — an instanced mesh's NaN vertices never hide a NaN in what
+  places it (one report, not two repair attempts; a geometry-nodes cloud is named by the mesh it scatters) —
+  skips the offender and raises `NonFiniteError` before writing anything; `run_bpy_scene` reports it as the build's error (not `CensusGlbError`, which stays the harness's), so
+  `run_wrapper` → `build` returns a failed, NOT `harness_failure` result and the repair loop hands it to the model
+  like any script error (the env check quotes it; the bpy asset check reports it file-first, not as "did not finish").  The file: `Stages` maps
+  every object a builder that returned created (`as_pointer`) to its file — `src/zones/<z>.py`,
+  `src/assets/<a>.py`, `src/env.py`, the entry's own top-level `src/scene.py`.  `json.dumps(allow_nan=False)`
+  is the last line (a writer bug, then, is a `CensusGlbError`, never a NaN on disk); a non-finite float custom
+  property is dropped from `extras`.  `run_bpy.py` scans what it would export (`scan_objects`: world matrix +
+  evaluated vertices) and exports nothing on a hit; `run_bpy_links.py` scans each link's group before baking it.
+  Measured: an `inf` written to a transform channel is clamped by RNA to FLT_MAX (finite), so NaN is the case
+  that reaches a writer; the w6 round-2 source rebuilt with this change fails as `NonFiniteTransform` at
+  `src/assets/mossy_arch.py`, 9 objects named (the arch's vertices + each NaN-placed arch with its zone file),
+  `harness_failure` false.  (2) `run_bpy.save_blend` packs every non-viewer image that `is_dirty` (8-bit → PNG,
+  float → OpenEXR, measured to reopen with the same pixels; an untouched generated image regenerates and is left
+  alone — note a generated image's `type` is `UV_TEST`, not `IMAGE`) before `save_as_mainfile(copy=True)`; both
+  `object.blend` and `scene.blend` save through it.  Model-visible: only the new error text on a NaN build; no
+  prompt payload moved.  Pinned: `tests/scene_blender/test_nonfinite.py` (the detector, the report, the writer
+  refusing a NaN matrix / custom property / JSON; in Blender a zone with a NaN location and a NaN-rotated parent
+  failing with both objects and `src/zones/ruins.py` named, no `census.glb`, and `build_with_repair` dispatching
+  a repair — no `build.harness_retry` — whose report leads with the file; `scene.blend` reopening a generated
+  texture with its pixels; an instanced NaN-vertex mesh AND its NaN placement both reported, a geometry-nodes
+  scatter named by its mesh), `tests/scene_blender/test_prompts.py` (the asset check's NaN error),
+  `tests/blender_cadquery/test_blender_nonfinite.py` (NaN location / NaN vertex fail
+  the static build, `object.blend` keeps an 8-bit and a float generated image),
+  `tests/urdf_joints/test_live_blender.py::test_a_nan_in_a_link_is_the_scripts_error`.
 
 ## Rejected / deferred
 

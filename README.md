@@ -58,19 +58,6 @@ engine.
 
 ## Results
 
-**The harness lifts every backbone it runs.** On 100 text-to-3D object prompts, the same model
-inside the 3DCodeVerse Harness beats its own native coding harness:
-
-| Model | Native harness → 3DCodeVerse | Human preference | Judge score (0–100) |
-| :-- | :-- | :-: | :-: |
-| Gemini 3.8 Flash | Gemini CLI → **3DCodeVerse** | 13% → **87%** | 61.3 → **86.6** |
-| Claude Opus 5.5 | Claude Code → **3DCodeVerse** | 21% → **79%** | 77.2 → **88.5** |
-| GPT-6 Astra | Codex → **3DCodeVerse** | 31% → **69%** | 76.4 → **87.7** |
-| GPT-6 Luna | Codex → **3DCodeVerse** | 11% → **89%** | 64.4 → **85.9** |
-| Claude Opus 5.5 | Claude Design → **3DCodeVerse** | 10% → **90%** | 37.4 → **87.7** |
-
-The same pattern holds on articulated objects, scenes and graphics, with 78–88% human preference.
-
 <p align="center"><img src="assets/main_results.png" alt="Main results across four 3D coding tasks" width="90%"></p>
 
 **Fine-tuning on 3DCodeVerse-2M makes open models execute.** The table reports execution rate (%)

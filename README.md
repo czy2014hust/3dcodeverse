@@ -19,8 +19,7 @@
 </sub>
 </p>
 
-<!-- TODO: point the arXiv badge at the paper (and swap "coming soon" for its id) once it is up -->
-<a href="#"><img src="https://img.shields.io/badge/arXiv-coming%20soon-B31B1B?logo=arxiv&logoColor=white" alt="arXiv"></a>
+<a href="https://arxiv.org/pdf/2610.22341"><img src="https://img.shields.io/badge/arXiv-2610.22341-B31B1B?logo=arxiv&logoColor=white" alt="arXiv"></a>
 <a href="https://3dcodeverse.com"><img src="assets/badges/project_page.svg" alt="Project Page"></a>
 <a href="https://huggingface.co/datasets/ilabai/3dcodeverse"><img src="assets/badges/hugging_face.svg" alt="Hugging Face"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/Code%20License-Apache%202.0-4C9A2A" alt="Code License: Apache 2.0"></a>
@@ -28,8 +27,11 @@
 </div>
 
 <p align="center">
-  <img src="assets/teaser.jpg" alt="3DCodeVerse showcases: scenes, graphics, articulated objects and 3D objects, all built only by code" width="100%">
+  <a href="assets/3dcodeverse_illustration_video.mp4">
+    <img src="assets/teaser.gif" alt="3DCodeVerse animated showcases: scenes, graphics, articulated objects and 3D objects, all built only by code. Click to watch the full video." width="100%">
+  </a>
 </p>
+<p align="center"><a href="assets/3dcodeverse_illustration_video.mp4">Watch the full video with audio</a></p>
 <p align="center"><em>Every asset above is built <b>only by code</b> (Blender Python, Three.js, OpenGL, …),
 from 3D objects to articulated objects, scenes and graphics renderings.</em></p>
 

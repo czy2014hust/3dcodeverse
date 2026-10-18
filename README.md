@@ -30,6 +30,30 @@ https://github.com/user-attachments/assets/71374368-ccf0-410b-b2ee-fac7f7405fbc
 
 ## Highlights
 
+### 3DCodeVerse Harness
+
+<p align="center"><img src="assets/harness_overview.png" alt="Overview of the 3DCodeVerse Harness" width="95%"></p>
+
+An LLM planner defines the target asset, and a DAG of sub-agents codes and assembles a 3D program.
+Every round, the harness collects three kinds of feedback:
+
+1. **Execution** — build and runtime logs.
+2. **Measurement** — dimensions, contacts, collisions, kinematics and placement, reported per part
+   with numerical correction hints.
+3. **Vision** — a rubric-guided VLM judge on labelled multi-view renders.
+
+The score is computed in code from rubric weights, defect penalties and measured caps, and the
+measurements veto visual claims they rule out. The feedback becomes localized repair tasks for a fix
+agent, and the best-scoring round is the deliverable. Because every round is recorded, including
+successes, failures, repairs and preference pairs, the harness also serves as the corpus's data
+engine.
+
+### 3DCodeVerse-2M Dataset
+
+<p align="center"><img src="assets/dataset_overview.jpg" alt="Curation and composition of 3DCodeVerse-2M" width="95%"></p>
+
+### Results
+
 **The harness lifts every backbone it runs.** On 100 text-to-3D object prompts, the same model
 inside the 3DCodeVerse Harness beats its own native coding harness:
 
@@ -54,26 +78,6 @@ on 805 fixed tasks:
 | &nbsp;&nbsp;+ SFT | **84.9** | **90.3** | **98.5** | **86.0** | **56.0** | **74.5** |
 | Qwen3.8-27B | 51.9 | 74.8 | 65.5 | 80.0 | 57.0 | 72.5 |
 | &nbsp;&nbsp;+ SFT + DPO | **92.9** | **93.2** | **98.5** | **90.0** | **71.5** | **92.5** |
-
-## How it works
-
-<p align="center"><img src="assets/harness_overview.png" alt="Overview of the 3DCodeVerse Harness" width="95%"></p>
-
-An LLM planner defines the target asset, and a DAG of sub-agents codes and assembles a 3D program.
-Every round, the harness collects three kinds of feedback:
-
-1. **Execution** — build and runtime logs.
-2. **Measurement** — dimensions, contacts, collisions, kinematics and placement, reported per part
-   with numerical correction hints.
-3. **Vision** — a rubric-guided VLM judge on labelled multi-view renders.
-
-The score is computed in code from rubric weights, defect penalties and measured caps, and the
-measurements veto visual claims they rule out. The feedback becomes localized repair tasks for a fix
-agent, and the best-scoring round is the deliverable. Because every round is recorded, including
-successes, failures, repairs and preference pairs, the harness also serves as the corpus's data
-engine.
-
-<p align="center"><img src="assets/dataset_overview.jpg" alt="Curation and composition of 3DCodeVerse-2M" width="95%"></p>
 
 ## Repository layout
 

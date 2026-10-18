@@ -87,7 +87,6 @@ on 805 fixed tasks:
 | [`toolkits/`](toolkits/) | Dataset curation, format conversion, validation, and training-data preparation. | [Data toolkit guide](toolkits/README.md) |
 | [`finetune/`](finetune/) | Supervised fine-tuning and preference optimization for open models. | [Training guide](finetune/README.md) |
 | [`eval/`](eval/) | Benchmarks and evaluation pipelines for the harness and standalone models. | [Evaluation guide](eval/README.md) |
-| [`assets/`](assets/) | Figures, videos, and other media used in this README. | — |
 
 ## Citation
 

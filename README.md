@@ -26,27 +26,7 @@
 
 </div>
 
-<p align="center">
-  <a href="assets/3dcodeverse_illustration_video.mp4">
-    <img src="assets/teaser.gif" alt="3DCodeVerse animated showcases: scenes, graphics, articulated objects and 3D objects, all built only by code. Click to watch the full video." width="100%">
-  </a>
-</p>
-<p align="center"><a href="assets/3dcodeverse_illustration_video.mp4">Watch the full video with audio</a></p>
-<p align="center"><em>Every asset above is built <b>only by code</b> (Blender Python, Three.js, OpenGL, …),
-from 3D objects to articulated objects, scenes and graphics renderings.</em></p>
-
-**3DCodeVerse** is a research ecosystem that lets coding agents create **editable, verifiable 3D
-content at scale**. It is the official code release of the paper and contains:
-
-- **3DCodeVerse-2M** — a curated corpus of about 2M standalone, executable 3D programs across static
-  objects, articulated assets, scenes and graphics. Each program comes with its source files and
-  assets, descriptions and verification records.
-- **The 3DCodeVerse Harness** — a multi-agent, DAG-structured coding harness. It plans a 3D project,
-  has vendor coding agents write it as raw code, then executes, measures, renders and judges the
-  result. It refines the program from that feedback with no human in the loop, and records every
-  run as training data.
-- **Open-model baselines and recipes** — LoRA/DPO fine-tuning of Qwen models on the corpus, and
-  the execution-based evaluation stack used to score them.
+https://github.com/user-attachments/assets/71374368-ccf0-410b-b2ee-fac7f7405fbc
 
 ## Highlights
 

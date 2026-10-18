@@ -24,7 +24,7 @@
 
 </div>
 
-https://github.com/user-attachments/assets/68cdb4e5-611d-4ded-83a1-ba49c2f788e0
+https://github.com/user-attachments/assets/3b0b5e5f-eed0-4ffd-8ab7-f3c709e15fad
 
 ## News
 

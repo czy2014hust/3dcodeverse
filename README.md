@@ -28,6 +28,10 @@
 
 https://github.com/user-attachments/assets/71374368-ccf0-410b-b2ee-fac7f7405fbc
 
+## News
+
+- **[10/15/2026]** Our [paper](https://arxiv.org/abs/2610.22341) is now available on arXiv.
+
 ## Highlights
 
 ### 3DCodeVerse Harness
@@ -52,7 +56,7 @@ engine.
 
 <p align="center"><img src="assets/dataset_overview.jpg" alt="Curation and composition of 3DCodeVerse-2M" width="95%"></p>
 
-### Results
+## Results
 
 **The harness lifts every backbone it runs.** On 100 text-to-3D object prompts, the same model
 inside the 3DCodeVerse Harness beats its own native coding harness:

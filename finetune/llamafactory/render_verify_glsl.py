@@ -4,12 +4,11 @@ Samples (or exhaustively walks) the unique programs in the flattened shadertoy d
 WebGL2, and records status / distinct colours / pixel std / whether the image changes with iTime. Writes
 `renders_ok`, `renders_status` back into the parquet rows when run with --write.
 
-usage: python scripts/render_verify_glsl.py [--sample 3000] [--workers 8] [--write]
+usage: python llamafactory/render_verify_glsl.py [--sample 3000] [--workers 8] [--write]
 """
-import argparse, collections, glob, hashlib, json, os, random, re, sys, tempfile
+import argparse, collections, glob, hashlib, json, os, random, re, tempfile
 from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
-sys.path.insert(0, "/wekafs/ict/hx_624/llm-ft/eval")
 os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "/wekafs/ict/hx_624/cache/ms-playwright")
 
 def code_of(m):

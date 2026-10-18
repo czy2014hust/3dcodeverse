@@ -73,8 +73,8 @@ on 805 fixed tasks:
 | Directory | Description | Documentation |
 | :-- | :-- | :-- |
 | [`harness/`](harness/) | Agent-based 3D content generation, execution, rendering, and verification. | [Harness guide](harness/README.md) |
-| [`toolkits/`](toolkits/) | Dataset curation, format conversion, validation, and training-data preparation. | [Data toolkit guide](toolkits/README.md) |
-| [`finetune/`](finetune/) | Supervised fine-tuning and preference optimization for open models. | [Training guide](finetune/README.md) |
+| [`toolkits/`](toolkits/) | General data CLI and per-source corpus curation. | [Data toolkit guide](toolkits/README.md) |
+| [`finetune/`](finetune/) | LLaMA-Factory training-data preparation, supervised fine-tuning, and preference optimization for open models. | [Training guide](finetune/README.md) |
 | [`eval/`](eval/) | Benchmarks and evaluation pipelines for the harness and standalone models. | [Evaluation guide](eval/README.md) |
 
 ## Citation

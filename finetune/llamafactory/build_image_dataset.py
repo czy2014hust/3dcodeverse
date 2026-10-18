@@ -14,7 +14,7 @@ Sources (all already on disk):
   threejs_distill      4 views per sample
   animation2code       4 views per sample
 
-usage: python scripts/build_image_dataset.py [--out data/img_code] [--views 1] [--max_per_source 20000]
+usage: python llamafactory/build_image_dataset.py [--out data/img_code] [--views 1] [--max_per_source 20000]
 """
 import argparse
 import collections

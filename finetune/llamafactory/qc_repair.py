@@ -13,7 +13,7 @@ Three passes, each writing a report and (where it helps) a repaired copy of the 
   dedup     find exact-duplicate programs *within* and *across* subdirs of the same source and write the
             duplicate groups so the upstream dataset can be cleaned too.
 
-usage: python scripts/qc_repair.py --root /wekafs/ict/hx_624/hf_subdirs [--pass glsl|python|dedup|all] [--workers 32]
+usage: python llamafactory/qc_repair.py --root /wekafs/ict/hx_624/hf_subdirs [--pass glsl|python|dedup|all] [--workers 32]
 """
 import argparse
 import ast

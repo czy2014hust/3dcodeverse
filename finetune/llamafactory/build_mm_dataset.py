@@ -16,7 +16,7 @@ Format notes (checked against LLaMA-Factory's loader):
 Sources: bioinspired3d (tars, 4 views), 3dcodebench factories (tars, 4 views, benchmark factories excluded),
 blender_distill / threejs_distill / animation2code (file trees, 4 views).
 
-usage: python scripts/build_mm_dataset.py [--views 4] [--out data/mm]
+usage: python llamafactory/build_mm_dataset.py [--views 4] [--out data/mm]
 """
 import argparse
 import collections

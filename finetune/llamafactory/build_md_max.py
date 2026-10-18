@@ -17,7 +17,7 @@ Deliberately excluded and why:
 Each sample yields up to 3 training pairs (captions: instruction / detailed / factory), deduped by (prompt, code).
 Token length is estimated as tokens(code) + tokens(prompt) + template overhead, tokenizing each unique code/prompt once.
 
-usage: python scripts/build_md_max.py [--max_tokens 8192] [--captions 3] [--out data/md_max]
+usage: python llamafactory/build_md_max.py [--max_tokens 8192] [--captions 3] [--out data/md_max]
 """
 import argparse
 import glob
@@ -26,13 +26,11 @@ import json
 import os
 import random
 import re
-import sys
 import unicodedata
 from concurrent.futures import ProcessPoolExecutor
 
 import pandas as pd
 
-sys.path.insert(0, "/wekafs/ict/hx_624/llm-ft/scripts")
 META = "/wekafs/ict/hx_624/data/3dcodeverse_meta"
 FILES = "/wekafs/ict/hx_624/data/3dcodeverse_files"
 MD = "/wekafs/ict/hx_624/llm-ft/data/multidialect"

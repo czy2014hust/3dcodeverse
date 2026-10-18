@@ -5,7 +5,7 @@ dataset. Every vision tower we train downsamples to 448x448 anyway (our own 27B 
 448^2), so a <=448px JPEG loses nothing a training run would have seen — and the untouched originals stay in the
 corpus tars for anyone who needs them. Measured saving: 95%, so 84 GB becomes about 4 GB.
 
-usage: python scripts/shrink_pair_images.py [--root DIR] [--out DIR] [--max_px 448] [--quality 88] [--workers 64]
+usage: python llamafactory/shrink_pair_images.py [--root DIR] [--out DIR] [--max_px 448] [--quality 88] [--workers 64]
 """
 import argparse
 import glob

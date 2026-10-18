@@ -6,10 +6,9 @@ Order of preference, so the data stays as close to the author's source as possib
   3. otherwise                                                               -> kept, marked compiles=False
 Writes the `compiles` / `repair` columns back into every shadertoy *_llamafactory_flat parquet.
 """
-import collections, glob, hashlib, json, os, re, sys
+import collections, glob, hashlib, json, os, re
 from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
-sys.path.insert(0, "/wekafs/ict/hx_624/llm-ft/scripts")
 from qc_repair import code_of, glsl_compile
 
 REPAIR = "/wekafs/ict/hx_624/glsl_repair"

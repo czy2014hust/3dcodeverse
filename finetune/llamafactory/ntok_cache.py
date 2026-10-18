@@ -1,4 +1,4 @@
-"""Helper for build scripts: load cached token counts for a jsonl (scripts/cache_ntok.py), falling back to tokenizing."""
+"""Helper for build scripts: load cached token counts for a jsonl (llamafactory/cache_ntok.py), falling back to tokenizing."""
 import os
 def load_ntok(path, tok=None):
     c = path + ".ntok"

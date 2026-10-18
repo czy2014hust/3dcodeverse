@@ -1,7 +1,7 @@
 """Package the finetuning data as a HuggingFace dataset in LLaMA-Factory (ShareGPT) format.
 
 Design: publish the *corpus* + the *recipes* + the *derived* sets, not the 15 near-duplicate training mixes
-(they are all samples of the same corpus and would multiply the size for nothing — `scripts/sample_mix.py`
+(they are all samples of the same corpus and would multiply the size for nothing — `llamafactory/sample_mix.py`
 regenerates any of them from a one-line budget spec).
 
   sft/<dialect>/train-*.parquet     the md_max corpus (768k prompt→code pairs), sharded by dialect
@@ -12,7 +12,7 @@ regenerates any of them from a one-line budget spec).
   mixes.json                        the exact budget spec of every mix used in the report
   README.md                         dataset card
 
-usage: python scripts/build_hf_dataset.py [--out /wekafs/ict/hx_624/hf_ds] [--push ilabai/3dcodeverse-llamafactory] [--private]
+usage: python llamafactory/build_hf_dataset.py [--out /wekafs/ict/hx_624/hf_ds] [--push ilabai/3dcodeverse-llamafactory] [--private]
 """
 import argparse
 import collections
@@ -193,7 +193,7 @@ llamafactory-cli train your_config.yaml     # with: dataset_dir: data/3dcv, data
 ## Reproducing the mixes from the report
 
 The report's training mixes are *samples* of this corpus, so they are described by a budget rather than shipped
-as duplicated files (`mixes.json` has the exact specs; `scripts/sample_mix.py` in the repo applies them):
+as duplicated files (`mixes.json` has the exact specs; `llamafactory/sample_mix.py` in the repo applies them):
 
 | mix | pairs | tokens | captions/sample | result |
 |---|---|---|---|---|

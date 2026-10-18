@@ -14,8 +14,8 @@ Two sources are multi-file in the original dataset and both can be flattened exa
 Everything is then re-emitted in LLaMA-Factory ShareGPT format next to the other converted subdirs.
 
 usage:
-  python scripts/flatten_multifile.py --shadertoy [--out /wekafs/ict/hx_624/hf_subdirs]
-  python scripts/flatten_multifile.py --urdf_tars /wekafs/ict/hx_624/data/3dcodeverse_tars
+  python llamafactory/flatten_multifile.py --shadertoy [--out /wekafs/ict/hx_624/hf_subdirs]
+  python llamafactory/flatten_multifile.py --urdf_tars /wekafs/ict/hx_624/data/3dcodeverse_tars
 """
 import argparse
 import collections

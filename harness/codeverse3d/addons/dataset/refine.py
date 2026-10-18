@@ -13,7 +13,7 @@ commit.  ``instructions`` is ``RoundRecord.instructions``, the task list
 ``build_refine_instructions`` compiled — not the per-group prompt text the sessions were
 handed, which is a rendering of it.
 
-The rows are data, not a training format: ``toolkits/llamafactory/build_refine_sft.py``
+The rows are data, not a training format: ``finetune/llamafactory/build_refine_sft.py``
 turns them into the message shape the finetune pipeline consumes.  ``--with-code`` inlines
 the changed files so that conversion needs no access to the runs.
 """

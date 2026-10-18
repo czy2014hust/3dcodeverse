@@ -1,6 +1,19 @@
 # finetune/ (component notes for agents)
 
-LLM finetuning + execution-based eval for 3DCodeVerse. Read `README.md` here and `docs/REPORT.md` (conclusions + pitfalls) first.
-- Training is **unpatched LLaMA-Factory** driven by `configs/lf/*.yaml`; do not fork the framework — add a YAML + a dataset entry.
-- Evaluate by *executing* the code (`eval/`): 3DCodeBench (Blender → Chamfer/F vs GT), per-dialect held-out sets, pass@N. Greedy decoding collapses on boilerplate-heavy dialects (OpenSCAD/GLSL) — use sampling there.
-- Absolute paths point at the original machine; adapt `env.sh` + YAML path keys + tool paths in `eval/*runner*.py` before running.
+Training-data preparation and LLM fine-tuning for 3DCodeVerse. Read `README.md` here and
+`docs/REPORT.md` (conclusions and pitfalls) first.
+
+- Training is **unpatched LLaMA-Factory** driven by `configs/lf/*.yaml`; keep the upstream framework
+  external and add a recipe plus the corresponding dataset registry entries.
+- `llamafactory/` is the canonical home for this project's LF data conversion, QC, pair builders,
+  mix sampling, and publication scripts. It is not vendored framework code. Edit implementations there;
+  the seven Python entries in `scripts/` are compatibility forwarders.
+- Configs stay in `configs/`, environment snapshots in `env/`, and train/export/orchestration launchers
+  in `scripts/`. General source curation and the contributor CLI belong in `../toolkits/`.
+- Evaluate generated code with `../eval/llm/`: 3DCodeBench, held-out dialect suites, and pass@N. Follow
+  its protocol and decoding defaults. The old stop-DPO scripts still need adaptation to its generation
+  schema; do not assume replacing a path is sufficient.
+- Workstation paths remain in `env.sh`, launchers, configs, and data tools. Inspect them before running;
+  editing `env.sh` alone is insufficient. Current local training recipes also require external data
+  registries not fully represented by `data_specs/dataset_info.json`.
+- Keep historical reports and experiment records intact when reorganizing code.

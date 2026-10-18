@@ -3,7 +3,9 @@
 #   scripts/sync_repo.sh "commit message"        (default message if omitted)
 #
 # What is synced (code + docs only):
-#   scripts/ configs/ eval/ env.sh   ->  finetune/
+#   shell scripts/ configs/ eval/ env.sh -> finetune/
+# Python data tools are maintained in the repo's finetune/llamafactory/;
+# their compatibility launchers in scripts/ must not be overwritten by old copies.
 #   REPORT.md                        ->  finetune/docs/REPORT.md
 #   README.md                        ->  finetune/docs/PROJECT_README.md
 #   llm_finetune_exps.md             ->  finetune/llm_finetune_exps.md
@@ -18,7 +20,10 @@ DST=$REPO/finetune
 MSG=${1:-"finetune: sync scripts, configs, eval stack and docs"}
 
 [ -d "$DST" ] || { echo "repo clone missing at $REPO"; exit 1; }
-rsync -a --delete --exclude '__pycache__' --exclude '*.pyc' "$SRC/scripts/" "$DST/scripts/"
+# Preserve the repo-owned entrypoints/docs and this script itself, so an older
+# external sync script cannot restore the pre-consolidation mirroring rules.
+rsync -a --delete --exclude '__pycache__' --exclude '*.pyc' --exclude '*.py' \
+  --exclude '/sync_repo.sh' --exclude '/README.md' "$SRC/scripts/" "$DST/scripts/"
 # --delete on configs too: without it a config retired into configs/lf/archive/ was copied to its new
 # location but the old copy lingered in the repo forever, so a tidy-up never actually reached GitHub.
 rsync -a --delete --exclude '__pycache__' "$SRC/configs/" "$DST/configs/"

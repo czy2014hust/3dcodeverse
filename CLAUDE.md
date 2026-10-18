@@ -10,4 +10,7 @@ The harness lives in **`harness/`** — read `harness/CLAUDE.md` +
 A/B rigs, reports; its tests: `cd eval && python -m pytest`), `eval/llm` evaluates a bare LLM/VLM
 (was `finetune/3dcodeverse_eval`).  Read `eval/README.md` first.
 
-Other top-level folders are separate components (`toolkits/` data tooling, `finetune/` training).
+Other top-level folders are separate components: `toolkits/` owns the general data CLI and source curation;
+`finetune/` owns training and its data preparation. The canonical LLaMA-Factory data scripts live in
+`finetune/llamafactory/`; `finetune/configs/`, `finetune/env/`, and the training launchers in
+`finetune/scripts/` retain their existing locations. Read `finetune/CLAUDE.md` before changing them.

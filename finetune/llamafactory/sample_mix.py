@@ -2,7 +2,7 @@
 
 md_max is ~0.77M pairs / ~0.9B tokens and 97% CadQuery+GLSL; every real run wants a different slice of it.
 
-  python scripts/sample_mix.py --out data/md_27b_max \
+  python llamafactory/sample_mix.py --out data/md_27b_max \
       --budget blender=all,openscad=all,threejs=all,web=all,cadquery=25M,glsl=25M \
       [--src data/md_max] [--captions_per_sample 2] [--seed 5]
 

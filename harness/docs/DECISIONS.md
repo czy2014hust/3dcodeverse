@@ -478,7 +478,7 @@ Pointers: EVAL, PAPER_WRITING = `eval/docs/*.md`; COST, RUNBOOK, ARCHITECTURE, I
     `cat-file --batch`, never `git archive` (a planted `filter.<name>.smudge` executes and no flag
     turns it off); pinned by a test in `tests/flywheel_cli` (`record/_git.py`).
   * **The refine transitions are the corpus this harness is for** (`3dcode flywheel refine`: one
-    row per refined round); format conversion lives in `toolkits/llamafactory/`, not in the harness
+    row per refined round); format conversion lives in `finetune/llamafactory/`, not in the harness
     (owner's boundary, 2026-09-03).
   * **`<mimic>` changes the sweep, which is what it was for**: on the 8 of 14 prompts that declare
     a coupling the sampler drives a median 3 joints per pose instead of 6; the `joint_sweep`

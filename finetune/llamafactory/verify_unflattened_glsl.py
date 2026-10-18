@@ -6,7 +6,7 @@ from and `flatten_multifile.py` skipped them — exactly 44 of 112, with zero mi
 checker and the same minimal repairs over those, and writes the `compiles` / `repair` columns the flattened
 folders already carry, so a training mix can filter the whole corpus by one rule instead of two.
 
-usage: python scripts/verify_unflattened_glsl.py [--workers 40] [--limit_shards N] [--out DIR]
+usage: python llamafactory/verify_unflattened_glsl.py [--workers 40] [--limit_shards N] [--out DIR]
 """
 import argparse
 import collections

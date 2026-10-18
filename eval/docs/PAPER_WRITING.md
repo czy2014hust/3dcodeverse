@@ -19,7 +19,7 @@ that owns it — §5.2 was exactly that until 2026-09-03 (review) and is now a p
 A/B with an A/A mode), `bench/compare_backends.py` (harness vs one-shot),
 `bench/paired_compare.py` (paired statistics), `bench/plan_stage_bench.py` +
 `bench/plan_stage_report.py` (the loss-event channel, data in `bench/data/plan_stage/`),
-`3dcode flywheel refine` (the transition corpus) and `toolkits/llamafactory/` (its training
+`3dcode flywheel refine` (the transition corpus) and `finetune/llamafactory/` (its training
 format).
 
 ## 0. The system, in one paragraph
@@ -53,7 +53,7 @@ full battery were `joint_sweep`.
    count the loss event, run n in the hundreds (§5.1).
 6. **Coupled-mechanism support for URDF articulation** with a mechanism-level readout (§5.3).
 7. **A refine corpus**: (judge issues + gate findings + instructions) → code diff → score
-   delta; `toolkits/llamafactory/` converts those rows into the finetune pipeline's format,
+   delta; `finetune/llamafactory/` converts those rows into the finetune pipeline's format,
    which the harness itself never writes (§7).
 
 ## 0.2 Evaluation-protocol work that predates the measurements
@@ -424,7 +424,7 @@ round +0.197, 119 rows carrying gate ERRORs.  Both sides come from the round's o
 commit, not from `HEAD`.  (The same export read 205 rows on 2026-09-02; the corpus grows
 with every battery, so the selector is the date.)
 
-`toolkits/llamafactory/build_refine_sft.py` turns the improved transitions into the message
+`finetune/llamafactory/build_refine_sft.py` turns the improved transitions into the message
 shape the finetune pipeline consumes: **112 samples** (92 articulated, 20 static; median
 answer 25.4 kB, median brief 28.2 kB), answered with the files the round produced in the
 `=== FILE: path ===` envelope.  This is the one thing the harness produces that a one-shot corpus cannot: *given
@@ -511,7 +511,7 @@ data the repo does not carry; they are marked in the caveat column.
 | base64 amplification | 261 k tokens vs 516 for one 275 kB sheet | measured on a recorded blob + vendor bundle | arithmetic + matching recorded prompt jumps; **no repo script** |
 | token growth in turns | input(t) = 12 364 + 1 822·t; total ∝ n^1.60; dollars ∝ n^1.19–1.34 | 1 063 in-process sessions, 30 401 turns | **no repo script** — the in-process agent, since gemini-cli emits no per-turn usage |
 | coupled mechanisms declared | 8 of 14 prompts; driven joints per pose 6 → 3 (1–2 on the one-input mechanisms) | `bench/coupling_stats.py bench/out/wave2_lean --per-prompt` | recomputed from the recorded URDFs |
-| refine corpus | 254 transitions, 112 SFT samples (2026-09-03) | `3dcode flywheel refine`, `toolkits/llamafactory/build_refine_sft.py` over `bench/out` | corpus grows with every battery |
+| refine corpus | 254 transitions, 112 SFT samples (2026-09-03) | `3dcode flywheel refine`, `finetune/llamafactory/build_refine_sft.py` over `bench/out` | corpus grows with every battery |
 
 ## 9.2 Open questions
 
@@ -606,7 +606,7 @@ python bench/plan_stage_bench.py --tree ../harness --label restart_on --reps 20 
 python bench/plan_stage_report.py bench/data/plan_stage/*.jsonl
 # the corpus the loop produces
 3dcode flywheel refine bench/out refine.jsonl --with-code
-python ../toolkits/llamafactory/build_refine_sft.py refine.jsonl --out refine_sft.jsonl  # toolkits/ is at the repo root
+python ../finetune/llamafactory/build_refine_sft.py refine.jsonl --out refine_sft.jsonl  # finetune/ is at the repo root
 ```
 
 Recorded runs referenced above (not committed): `bench/out/{compare_v4_calm, compare_art_v2,

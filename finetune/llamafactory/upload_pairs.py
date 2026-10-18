@@ -5,7 +5,7 @@ rule as <source>/<subdir>_llamafactory_{text,img,imgtext}, and their renders as 
 top-level pairs/ or pair_images/ would read as if it were a source of its own, which is the same mistake the
 five stray *_llamafactory folders made.
 
-usage: python scripts/upload_pairs.py [--batch 24] [--images] [--drop_old]
+usage: python llamafactory/upload_pairs.py [--batch 24] [--images] [--drop_old]
 """
 import argparse
 import glob

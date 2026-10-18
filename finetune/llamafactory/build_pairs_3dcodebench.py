@@ -5,7 +5,7 @@ separate row -- an augmentation three independent runs showed does not help. Her
 pair type with one caption, and the renders come from the sample's own slice of the tar (metadata carries
 `tar`/`byte_start`/`byte_len`, so a ranged read fetches one sample without downloading a 2 GB shard).
 
-  python scripts/build_pairs_3dcodebench.py --subdir 3dcodebench/factories_geo --out DIR [--views 4] [--workers 8]
+  python llamafactory/build_pairs_3dcodebench.py --subdir 3dcodebench/factories_geo --out DIR [--views 4] [--workers 8]
       [--limit N] [--local_tars DIR]
 
 Writes <out>/<name>_{text,img,imgtext}/train.parquet + dataset_info.json + qc.json.
@@ -304,6 +304,12 @@ def main():
             code = FENCE_RE.sub("", v[2].strip()) or code
         if len(code.strip()) < 40:
             qc["short_code"] += 1
+            return None
+        # LLaMA-Factory counts <image> placeholders across EVERY turn, so a literal "<image>" in the answer
+        # (Shadertoy writes "// <image>" as a multipass section marker) reads as one more image than the row
+        # carries and aborts the whole run hours in. Seven such rows shipped once; drop them at the source.
+        if "<image>" in code:
+            qc["literal_image_token"] += 1
             return None
         caps = r.get("captions")
         caps = dict(caps) if isinstance(caps, dict) else (json.loads(caps) if isinstance(caps, str) else {})

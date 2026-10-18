@@ -1,48 +1,84 @@
-# finetune/ — LLM finetuning recipes + execution-based evaluation for 3DCodeVerse
+# finetune/ — training data and LLaMA-Factory recipes for 3DCodeVerse
 
-Everything needed to reproduce the Qwen3.5-9B finetuning study on 3DCodeVerse
-(text → Blender-Python / CadQuery / OpenSCAD / GLSL / three.js code), and the
-conclusions in `docs/REPORT.md`. The harness (`../harness`) generates data with
-API models; this folder trains and evaluates open models on that data.
+This component prepares training data and fine-tunes open models to generate Blender-Python,
+CadQuery, OpenSCAD, GLSL, and three.js code. The harness in [`../harness/`](../harness/) generates
+data with API models; standalone model evaluation lives in [`../eval/llm/`](../eval/llm/).
 
-**Nothing in LLaMA-Factory is patched** — all training is plain
-`llamafactory-cli` YAML (`configs/lf/`) + ShareGPT JSON registered in
-`data_specs/dataset_info.json`. Pinned environments are in `env/`.
+Training uses **unmodified upstream LLaMA-Factory**, pinned in `env/requirements-lf.txt`, through
+`llamafactory-cli` and ordinary YAML recipes. `llamafactory/` contains this project's data-preparation
+tools; it is not a copy or fork of the LLaMA-Factory framework.
 
 ## Layout
 
 | path | what |
 |---|---|
-| `scripts/` | data builders (`prep_data.py`, `build_multidialect*.py`, `build_md_big.py`, `build_md_xl.py`, `build_md_bal.py`, `build_boot_data.py`, `cache_ntok.py`), thin launchers around LLaMA-Factory (`lf_train.sh`, `lf_export.sh`, `make_lora_cfg.py`), experiment pipelines train→merge→eval (`run_exp.sh`, `run_md_exp.sh`, `run_full_ft*.sh`, `*_ckpt_sweep.sh`), execution-feedback / geometry-feedback DPO rounds (`run_dpo_exec.sh`, `dpo_round2.sh`, `md_dpo_round.sh`, `md_big_dpo_round.sh`, `md_xl_dpo_round.sh`, `geo_dpo_build.sh`), bootstrapping (`self_train_round*.sh`), report tooling (`build_report_html.py`, `contact_sheet_3dcodebench.py`) |
-| `configs/lf/` | one LLaMA-Factory YAML per experiment: LoRA SFT (`lora_*.yaml`), full-parameter ZeRO-3 SFT (`qwen35_9b_full_sft*.yaml`, `full_md_bal.yaml`, `ds_z3_offload.json`), DPO (`dpo_*.yaml`), LoRA merge/export (`export_*.yaml`) |
-| [`../eval/llm/`](../eval/llm/) | the execution-based evaluation (was `eval/` here): vLLM / API generation, 3DCodeBench execution in Blender, geometry metrics Chamfer / F-score vs GT, pass@k, per-dialect executors (CadQuery, OpenSCAD, GLSL, three.js), held-out dialect sets — see its README |
-| `data_specs/dataset_info.json` | LLaMA-Factory dataset registry for every SFT/DPO set used (ShareGPT format; the JSON files themselves are rebuilt by `scripts/`) |
-| `env/requirements-{llmft,lf,vllm}.txt` | pip freezes of the three conda envs (data/eval, LLaMA-Factory training, vLLM inference) |
-| `env.sh` | shell env (caches, secrets file) used by all scripts |
-| `docs/REPORT.md` | full experiment report (setup, data audit, ablations, DPO, multi-dialect, scale-up, training-amount curves, qualitative checks); `docs/PROJECT_README.md` is the original working README; `docs/assets/` renders |
+| [`llamafactory/`](llamafactory/) | canonical training-data scripts: ShareGPT conversion, quality checks, multimodal pairs, token counts, mix sampling, and Hub packaging; includes the per-source `runners/` |
+| [`scripts/`](scripts/) | training/export launchers and workstation orchestration; seven old Python data-script paths are compatibility forwarders to `llamafactory/` |
+| [`configs/lf/`](configs/lf/) | current SFT and stop-DPO YAML recipes, the LoRA export template, and a DeepSpeed offload template; see its README for the current recipe list |
+| `data_specs/` | recorded dataset registry and data statistics; each run must also have the registry and datasets named by its own `dataset_dir` |
+| `env/requirements-{llmft,lf,vllm}.txt` | snapshots of the original data/eval, LLaMA-Factory training, and vLLM inference environments |
+| `env.sh` | original workstation shell setup for environments, caches, and a local secrets file |
+| [`docs/REPORT.md`](docs/REPORT.md) | experiment conclusions; `REPORT_FULL.md`, `PROJECT_README.md`, and `llm_finetune_exps.md` preserve the historical study and run log |
 
-## Data on the Hub
+Configs, environments, and training launchers keep their existing locations. General corpus curation
+and the contributor CLI remain in [`../toolkits/`](../toolkits/).
 
-The training data in LLaMA-Factory (ShareGPT) format is published as **[`ilabai/3dcodeverse-llamafactory`](https://huggingface.co/datasets/ilabai/3dcodeverse-llamafactory)** (private; same CC-BY-NC-SA / non-commercial terms as the parent `ilabai/3dcodeverse`): the corpus sharded by dialect (`sft/<dialect>/`), the 15.7k execution-verified bootstrapped Blender samples, seven preference-pair sets (execution feedback and geometry feedback), the held-out test sets, a drop-in `dataset_info.json`, and `mixes.json` with the exact budget spec of every training mix in the report. Rebuild/refresh it with `scripts/build_hf_dataset.py`; regenerate any mix with `scripts/sample_mix.py`.
+## Data preparation
 
-## Results
-* **[`llm_finetune_exps.md`](llm_finetune_exps.md)** — the full experiment log: every training run with its config and wall time, every 3DCodeBench and per-dialect evaluation, and a summary of which levers moved the numbers (auto-generated tables from `scripts/build_exp_log.py` + curated commentary).
+Use the tools in [`llamafactory/`](llamafactory/README.md) for corpus conversion, validation,
+multimodal datasets, and mix sampling. For example, from this directory, after preparing the source
+`train.jsonl` and `val.jsonl`:
 
-## Install & background
-* **`docs/SETUP.md`** — step-by-step environment install (three conda envs with exact pins, LLaMA-Factory commit, flash-attn / fla / triton, vLLM, Blender / OpenSCAD / glslang / Playwright, caches on a network FS, smoke tests).
-* **`docs/LLAMA_FACTORY.md`** — how this project uses LLaMA-Factory (unpatched): dataset registry, template, stages (SFT / DPO), LoRA vs full + ZeRO-3, packing, launch/merge scripts, an annotated minimal YAML, and the pitfalls.
-* **`docs/REPORT.md`** — the experiment report (results + conclusions).
+```bash
+python llamafactory/sample_mix.py --src /path/to/md_max --out /path/to/mix \
+  --budget "blender=all,cadquery=25M,glsl=25M" --captions_per_sample 1
+```
 
-## Reproducing (short version)
+The study's ShareGPT data is published as
+**[`ilabai/3dcodeverse-llamafactory`](https://huggingface.co/datasets/ilabai/3dcodeverse-llamafactory)**
+(private; see the dataset card for its non-commercial terms). `llamafactory/build_hf_dataset.py`
+packages the corpus, historical preference sets, held-out tests, and mix descriptions from prepared
+local inputs. The published pair datasets are also used by the Hub recipe in `configs/lf/`.
 
-1. Envs (see `docs/REPORT.md` §1 for the pitfalls): `lf` = LLaMA-Factory (editable, upstream, unpatched) + torch 2.8.0+cu128 + flash-attn 2.8.3 + flash-linear-attention 0.5.2 + **triton 3.7.1** (Qwen3.5 GDN kernels on Hopper) + deepspeed; `vllm` = vLLM 0.27; `llmft` = data/eval (trimesh, cadquery, playwright, …). Blender 5.0.1 headless and an OpenSCAD AppImage are called by path.
-2. Data: only `metadata.parquet` of each 3DCodeVerse subset is needed. `scripts/build_multidialect.py` → `data/multidialect/<dialect>/{train,test}.jsonl`; `scripts/build_md_*.py` build the mixes (token-length filter ≤8192, cached by `scripts/cache_ntok.py`); `scripts/to_llamafactory.py` writes ShareGPT JSON + `dataset_info.json`.
-3. Train: `GPUS=0,1,2,3 scripts/lf_train.sh configs/lf/lora_md_xl.yaml gradient_accumulation_steps=2` (LoRA r64, cutoff 8192, packing, FA2) → `scripts/lf_export.sh configs/lf/export_md_xl.yaml` to merge.
-4. Evaluate with `../eval/llm/` (its README): from `../eval`, `python -m llm.run_eval --backend vllm --model <merged> --run <name> --suites headline heldout` (3DCodeBench: vLLM gen → Blender exec → Chamfer/F vs GT, plus the held-out dialect sets). Decode OpenSCAD/GLSL with sampling (T=0.7), not greedy.
-5. Execution-feedback DPO on top of any SFT model: `scripts/md_xl_dpo_round.sh` (sample → run in each dialect's executor → (OK, FAIL) pairs → `stage: dpo`).
+`data_specs/dataset_info.json` is a historical registry snapshot. The current local SFT recipes point
+at separate `mm_mix`, `full9b`, `pairs_mix`, or `pub_img` directories on the original workstation;
+their complete registries and data are not included in this checkout. Prepare or obtain the matching
+data and registry before launching a recipe. The remote recipe reads its registry from the Hub and
+still needs access to the dataset and its local media files.
 
-Paths are absolute for the machine the study ran on (`/wekafs/ict/hx_624/...`); adapt `env.sh`, the `*_dir`/`model_name_or_path` keys in `configs/lf/*.yaml`, and the tool paths at the top of `scripts/*.sh` before running elsewhere.
+## Train, export, evaluate
 
-## Headline results (3DCodeBench, 212 tasks, execution rate / F@0.05; details in `docs/REPORT.md`)
+Read [`docs/SETUP.md`](docs/SETUP.md) for the original environment setup and
+[`docs/LLAMA_FACTORY.md`](docs/LLAMA_FACTORY.md) for the integration. The shell launchers and data
+tools still contain `/wekafs/ict/hx_624/...` workstation paths. Adapt `env.sh`, the launchers, the
+YAML model/data/output paths, and tool paths before running elsewhere; changing `env.sh` alone does
+not update the other files.
 
-Qwen3.5-9B zero-shot 0% → LoRA on 5k Blender samples 75–82% → + execution-feedback DPO 93.9–96.2% → 4-dialect mixes: 25.6k 67%, 102k 84.9%, 270k (all 3DCodeVerse) 90.1%; 4 H100s: LoRA ≈17k tok/s, 270k samples / 293M tokens in 4.8 h.
+After that setup and data preparation, a current SFT recipe can be launched from `finetune/`:
+
+```bash
+GPUS=0,1,2,3 bash scripts/lf_train.sh configs/lf/sft_9b_lora64_lr1e-4_len8k_mmmix-plus.yaml
+bash scripts/export_lora.sh /absolute/path/to/run /absolute/path/to/the-same-base-model
+```
+
+The export script writes the merged model into `<run>/merged`. In the evaluation environment, from
+the repository's `eval/` directory, use the current standalone evaluator:
+
+```bash
+python -m llm.run_eval --backend vllm --model /absolute/path/to/run/merged \
+  --run my_sft --suites headline heldout
+```
+
+See [`../eval/llm/README.md`](../eval/llm/README.md) for tool/asset setup and suite decoding defaults.
+
+The stop-DPO recipes are in `configs/lf/dpo_*.yaml`; their workstation orchestration remains in
+`scripts/stop_dpo_pairs.sh` and `scripts/stop_dpo_round.sh`. Those scripts still depend on the old
+generation entrypoint, output schema, and prepared training prompts. Adapting them to `eval/llm/`
+is separate work; the folder reorganization does not make that historical pipeline portable.
+
+## Experiment records
+
+[`llm_finetune_exps.md`](llm_finetune_exps.md) and [`docs/REPORT.md`](docs/REPORT.md) document the
+results and lessons from the study. Historical run names and commands in these records may refer to
+recipes or drivers no longer present in the current checkout. Use [`configs/lf/README.md`](configs/lf/README.md)
+for the current recipe inventory.

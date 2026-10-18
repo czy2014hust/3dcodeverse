@@ -670,7 +670,7 @@ instructions written in response, both code snapshots and whether the score move
 (the row is `addons/dataset/refine.RefineTransition`; INTERFACES has the fields and the
 drop reasons).  That is the supervision the harness produces that a
 one-shot corpus cannot: what a failing artefact looked like, what was wrong with it
-in the harness's own words, and what the fix changed.  `toolkits/llamafactory/`
+in the harness's own words, and what the fix changed.  `finetune/llamafactory/`
 turns those rows into training files; the harness writes the measurement, not the
 trainer's format.  `flywheel caption` adds
 {detailed, instruction, factory} captions (image-grounded, brand-free, `--out` for

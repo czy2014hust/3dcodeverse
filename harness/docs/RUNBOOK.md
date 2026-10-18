@@ -196,7 +196,7 @@ unless you type `--host` yourself; it never serves a path outside the declared r
                                      # one row per round the harness asked to change; the row
                                      # schema is codeverse3d/addons/dataset/refine.RefineTransition and
                                      # INTERFACES has the call signatures.  Training formats live
-                                     # in toolkits/llamafactory/, not here.
+                                     # in finetune/llamafactory/, not here.
 3dcode flywheel caption <slug> [--model …] [--out caps/]      # --out = side-car mode, run untouched
 3dcode flywheel index runs/ runs_index.sqlite
 python -m codeverse3d.addons.calibration runs/<slug> [runs/<slug2> …] --model gemini:gemini-3.1-pro-preview --n 3 --out out/
